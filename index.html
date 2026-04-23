@@ -620,6 +620,7 @@ function parseNum(s) {
 }
 
 const fmtN   = n => (n||0).toLocaleString('pt-BR');
+const parsePatrimonio = s => { const n = parseNum(s); return n > 0 && n < 10000 ? n * 1000 : n; };
 const fmtR$  = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n||0);
 const fmtPct = (n,d=1) => (n==null||isNaN(n)) ? '—' : `${(n*100).toFixed(d)}%`;
 const esc    = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -712,7 +713,7 @@ function showDebug() {
     emailToCriacaoDbg[(v.email||'').toLowerCase().trim()]
   ).length;
 
-  const patriTotal = RAW.vendas.reduce((s,v) => s + parseNum(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
+  const patriTotal = RAW.vendas.reduce((s,v) => s + parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
   const valorTotal = RAW.vendas.reduce((s,v) => s + parseNum(v.valor), 0);
 
   const items = [
@@ -1090,7 +1091,7 @@ function renderVendas() {
 }
 
 function renderVendasCaptacao(vendas) {
-  const cap   = vendas.reduce((s,v) => s + parseNum(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
+  const cap   = vendas.reduce((s,v) => s + parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
   const qtd   = vendas.length;
   const plMed = qtd ? cap/qtd : 0;
   document.getElementById('vendas-card-title').textContent  = 'Metas de Captação';
@@ -1115,7 +1116,7 @@ function renderVendasCaptacao(vendas) {
 function renderVendasOrigem(vendas) {
   const base    = vendas.filter(isOrigemBase);
   const suno    = vendas.filter(v => !isOrigemBase(v));
-  const sumCap  = arr => arr.reduce((s,v)=>s+parseNum(v.adv_patrimonio_validado || v.patrimonio_validado),0);
+  const sumCap  = arr => arr.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado),0);
   const plMed   = arr => arr.length ? sumCap(arr)/arr.length : 0;
   document.getElementById('vendas-card-title').textContent  = 'Captação por Origem';
   document.getElementById('vendas-chart-title').textContent = 'Captação Diária por Origem (R$)';
@@ -1147,7 +1148,7 @@ function renderVendasChart(vendas) {
   parsed.forEach(({ d, row }) => {
     const lbl = dayFmt(d);
     if (dmSuno[lbl] === undefined) return;
-    const val = parseNum(row.adv_patrimonio_validado || row.patrimonio_validado);
+    const val = parsePatrimonio(row.adv_patrimonio_validado || row.patrimonio_validado);
     if (isOrigemBase(row)) dmBase[lbl] += val;
     else                    dmSuno[lbl] += val;
   });
