@@ -63,6 +63,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .filter-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,37,38,.08)}
 .btn-clear{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;color:var(--text-muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
 .btn-clear:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
+.date-presets{display:flex;flex-direction:column;gap:3px}
+.date-presets-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
+.date-presets-btns{display:flex;gap:4px;flex-wrap:wrap}
+.preset-btn{height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.preset-btn:hover{background:var(--red-light);color:var(--red);border-color:var(--red)}
+.preset-btn.active{background:var(--red);color:#fff;border-color:var(--red)}
 
 /* MULTI-SELECT */
 .multi-select{position:relative}
@@ -248,6 +254,15 @@ tr:hover td{background:#FAFAFA}
 
   <div class="main-area">
     <div class="filters-bar">
+      <div class="date-presets">
+        <span class="date-presets-label">Criação — Atalhos</span>
+        <div class="date-presets-btns">
+          <button class="preset-btn" onclick="applyDatePreset('ontem')">Ontem</button>
+          <button class="preset-btn" onclick="applyDatePreset('7dias')">Últ. 7 dias</button>
+          <button class="preset-btn" onclick="applyDatePreset('mes')">Mês atual</button>
+          <button class="preset-btn" onclick="applyDatePreset('30dias')">Últ. 30 dias</button>
+        </div>
+      </div>
       <div class="filter-group">
         <label class="filter-label">Criação — De</label>
         <input type="date" class="filter-input" id="f-di">
@@ -337,6 +352,15 @@ tr:hover td{background:#FAFAFA}
 
   <section class="view" id="view-vendas">
     <div class="view-filter-bar">
+      <div class="date-presets">
+        <span class="date-presets-label">Data Venda — Atalhos</span>
+        <div class="date-presets-btns">
+          <button class="preset-btn" onclick="applyDatePreset('ontem', true)">Ontem</button>
+          <button class="preset-btn" onclick="applyDatePreset('7dias', true)">Últ. 7 dias</button>
+          <button class="preset-btn" onclick="applyDatePreset('mes', true)">Mês atual</button>
+          <button class="preset-btn" onclick="applyDatePreset('30dias', true)">Últ. 30 dias</button>
+        </div>
+      </div>
       <div class="filter-group">
         <label class="filter-label">Filtro Data Venda — De</label>
         <input type="date" class="filter-input" id="f-vdi">
@@ -469,7 +493,8 @@ const STATE = {
 
 // Auto-detected at load time
 let REUNIAO_STATUS_KEY = null; // column name that holds "concluido"
-let DATE_FMT = null;           // 'MDY' or 'DMY' — detected from data
+let DATE_FMT = null;           // 'MDY' or 'DMY' — detected from leads/reunioes
+let VENDA_DATE_FMT = null;     // 'MDY' or 'DMY' — detected specifically from vendas
 
 // ================================================================
 // UTILITIES
@@ -522,7 +547,7 @@ function normalizeRow(row) {
   return out;
 }
 
-function parseDate(s) {
+function parseDate(s, fmt) {
   if (!s) return null;
   s = String(s).trim().replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*(AM|PM))?$/i,'').trim();
   if (!s) return null;
@@ -535,8 +560,8 @@ function parseDate(s) {
     if (a > 12) return new Date(y, b-1, a);
     // Definitively month-first if b > 12
     if (b > 12) return new Date(y, a-1, b);
-    // Use auto-detected format
-    if (DATE_FMT === 'MDY') return new Date(y, a-1, b);
+    // Use caller-supplied format, then global auto-detected format
+    if ((fmt || DATE_FMT) === 'MDY') return new Date(y, a-1, b);
     return new Date(y, b-1, a); // default DMY (BR)
   }
 
@@ -565,12 +590,31 @@ function detectDateFormat() {
         const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
         if (!m) continue;
         const a = +m[1], b = +m[2];
-        if (a > 12) { DATE_FMT = 'DMY'; return; }
-        if (b > 12) { DATE_FMT = 'MDY'; return; }
+        if (a > 12) { DATE_FMT = 'DMY'; break; }
+        if (b > 12) { DATE_FMT = 'MDY'; break; }
       }
+      if (DATE_FMT) break;
     }
+    if (DATE_FMT) break;
   }
-  DATE_FMT = 'DMY'; // fallback: Brazilian
+  if (!DATE_FMT) DATE_FMT = 'DMY'; // fallback: Brazilian
+
+  // Detect vendas date format independently from data_venda column.
+  // Google Sheets may export vendas dates in US format (M/D/YYYY) even when
+  // leads use the Brazilian format (D/M/YYYY), so we check vendas separately.
+  const vendaFields = ['data_venda','data_da_contratacao','data_contratacao','consultoria_data_da_contratacao_diario'];
+  for (const row of RAW.vendas.slice(0, 500)) {
+    for (const f of [...vendaFields, ...Object.keys(row)].filter((v,i,a)=>a.indexOf(v)===i)) {
+      const s = (row[f]||'').trim().replace(/\s+\d{1,2}:\d{2}.*$/,'').trim();
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!m) continue;
+      const a = +m[1], b = +m[2];
+      if (a > 12) { VENDA_DATE_FMT = 'DMY'; break; }
+      if (b > 12) { VENDA_DATE_FMT = 'MDY'; break; }
+    }
+    if (VENDA_DATE_FMT) break;
+  }
+  if (!VENDA_DATE_FMT) VENDA_DATE_FMT = DATE_FMT; // fallback to global
 }
 
 // Normalize value for comparison: lowercase + remove accents
@@ -613,6 +657,12 @@ function parseNum(s) {
   // Brazilian thousands only, no decimal: 1.234.567
   if (/^\d{1,3}(\.\d{3})+$/.test(s))
     return parseFloat(s.replace(/\./g,'')) || 0;
+  // US format with comma as thousands + dot decimal: 1,234.56 or 1,234,567.89
+  if (/^\d{1,3}(,\d{3})*\.\d+$/.test(s))
+    return parseFloat(s.replace(/,/g,'')) || 0;
+  // US thousands only, no decimal: 1,234,567
+  if (/^\d{1,3}(,\d{3})+$/.test(s))
+    return parseFloat(s.replace(/,/g,'')) || 0;
   // Comma as decimal separator: 1234,56
   if (/^\d+(,\d+)?$/.test(s))
     return parseFloat(s.replace(',','.')) || 0;
@@ -696,12 +746,12 @@ function showDebug() {
 
   const firstVenda  = RAW.vendas[0] || {};
   const datVenda    = firstVenda.data_venda || '—';
-  const datVParsed  = parseDate(datVenda);
+  const datVParsed  = parseDate(datVenda, VENDA_DATE_FMT);
   const patriSample = firstVenda.patrimonio_validado || '—';
   const valorSample = firstVenda.valor || '—';
 
   // Count vendas with parseable data_venda
-  const vendasComData = RAW.vendas.filter(v => parseDate(v.data_venda)).length;
+  const vendasComData = RAW.vendas.filter(v => parseDate(v.data_venda, VENDA_DATE_FMT)).length;
   // Count vendas with parseable data_criacao or email match
   const emailToCriacaoDbg = {};
   RAW.leads.forEach(l => {
@@ -717,7 +767,8 @@ function showDebug() {
   const valorTotal = RAW.vendas.reduce((s,v) => s + parseNum(v.valor), 0);
 
   const items = [
-    { label:'Formato data', val: DATE_FMT || '?' },
+    { label:'Formato data (leads)', val: DATE_FMT || '?' },
+    { label:'Formato data (vendas)', val: VENDA_DATE_FMT || '?' },
     { label:'data_criacao leads', val: `"${dateSample}" → ${dateParsed ? dateParsed.toLocaleDateString('pt-BR') : '❌ NÃO PARSEOU'}`, warn: !dateParsed },
     { label:'data_venda', val: `"${datVenda}" → ${datVParsed ? datVParsed.toLocaleDateString('pt-BR') : '❌ NÃO PARSEOU'} (${vendasComData}/${RAW.vendas.length} ok)`, warn: !datVParsed },
     { label:'patrimonio_validado', val: `"${patriSample}" → total: ${fmtR$(patriTotal)}` },
@@ -773,7 +824,7 @@ function filteredReuniones() {
 // fall back to data_venda so they are not erroneously excluded.
 function passGlobalVendas(row) {
   if (F.di || F.df) {
-    const d = parseDate(row.data_criacao) || parseDate(row.data_venda);
+    const d = parseDate(row.data_criacao) || parseDate(row.data_venda, VENDA_DATE_FMT);
     if (!d) return false;
     if (F.di && d < F.di) return false;
     if (F.df && d > F.df) return false;
@@ -790,7 +841,7 @@ function filteredVendas(applyVendaDate = false) {
   let rows = RAW.vendas.filter(passGlobalVendas);
   if (applyVendaDate && (F.vdi || F.vdf)) {
     rows = rows.filter(r => {
-      const d = parseDate(r.data_venda);
+      const d = parseDate(r.data_venda, VENDA_DATE_FMT);
       if (!d) return false;
       if (F.vdi && d < F.vdi) return false;
       if (F.vdf && d > F.vdf) return false;
@@ -905,10 +956,53 @@ function populateAllFilters() {
   });
 }
 
+function applyDatePreset(preset, isVenda = false) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let di, df;
+  if (preset === 'ontem') {
+    di = new Date(today); di.setDate(di.getDate() - 1);
+    df = new Date(di);
+  } else if (preset === '7dias') {
+    di = new Date(today); di.setDate(di.getDate() - 6);
+    df = new Date(today);
+  } else if (preset === 'mes') {
+    di = new Date(today.getFullYear(), today.getMonth(), 1);
+    df = new Date(today);
+  } else if (preset === '30dias') {
+    di = new Date(today); di.setDate(di.getDate() - 29);
+    df = new Date(today);
+  }
+
+  const toInput = d => d.toISOString().slice(0, 10);
+
+  if (isVenda) {
+    F.vdi = new Date(di.getTime());
+    F.vdf = new Date(df.getTime()); F.vdf.setHours(23, 59, 59);
+    document.getElementById('f-vdi').value = toInput(di);
+    document.getElementById('f-vdf').value = toInput(df);
+    // Mark active button
+    document.querySelectorAll('.view-filter-bar .preset-btn').forEach(b =>
+      b.classList.toggle('active', b.getAttribute('onclick') === `applyDatePreset('${preset}', true)`));
+    if (STATE.activeTab === 'vendas') render();
+  } else {
+    F.di = new Date(di.getTime());
+    F.df = new Date(df.getTime()); F.df.setHours(23, 59, 59);
+    document.getElementById('f-di').value = toInput(di);
+    document.getElementById('f-df').value = toInput(df);
+    // Mark active button
+    document.querySelectorAll('.filters-bar .preset-btn').forEach(b =>
+      b.classList.toggle('active', b.getAttribute('onclick') === `applyDatePreset('${preset}')`));
+    render();
+  }
+}
+
 function clearFilters() {
   F.di = F.df = null;
   document.getElementById('f-di').value = '';
   document.getElementById('f-df').value = '';
+  document.querySelectorAll('.filters-bar .preset-btn').forEach(b => b.classList.remove('active'));
   Object.keys(SEL).forEach(key => {
     SEL[key].clear();
     document.querySelectorAll(`#mso-${key} input`).forEach(cb => cb.checked = false);
@@ -1138,7 +1232,7 @@ function renderVendasChart(vendas) {
   destroyChart('vendas');
   if (!vendas.length) return;
 
-  const parsed = vendas.map(v => ({ d: parseDate(v.data_venda), row: v })).filter(x => x.d);
+  const parsed = vendas.map(v => ({ d: parseDate(v.data_venda, VENDA_DATE_FMT), row: v })).filter(x => x.d);
   if (!parsed.length) return;
   const { labels, dayFmt } = buildDayAxis(parsed.map(x=>x.d), F.vdi, F.vdf);
   if (!labels.length) return;
@@ -1202,7 +1296,7 @@ function renderCohort() {
       const em = (v.email||'').toLowerCase().trim();
       if (em) criacao = emailToCriacao[em] || null;
     }
-    const venda = parseDate(v.data_venda);
+    const venda = parseDate(v.data_venda, VENDA_DATE_FMT);
     if (!venda) return; // cannot place without sale date
     // If we still have no criacao, use data_venda as the safra month (same-month conversion)
     if (!criacao) criacao = venda;
@@ -1343,6 +1437,9 @@ function bindEvents() {
     document.getElementById(id).addEventListener('change', e => {
       const suffix = id.endsWith('di') ? 'T00:00:00' : 'T23:59:59';
       F[key] = e.target.value ? new Date(e.target.value + suffix) : null;
+      // Clear preset highlight when user manually edits
+      const bar = isVenda ? '.view-filter-bar' : '.filters-bar';
+      document.querySelectorAll(`${bar} .preset-btn`).forEach(b => b.classList.remove('active'));
       if (!isVenda || STATE.activeTab === 'vendas') render();
     });
   };
