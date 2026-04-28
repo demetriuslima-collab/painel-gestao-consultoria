@@ -895,20 +895,23 @@ function buildAllMS() {
         o.style.display = o.querySelector('.ms-opt-label').textContent.toLowerCase().includes(q) ? '' : 'none';
       });
     });
+
+    // Impede que cliques dentro do painel fechem o dropdown
+    const panel = document.getElementById(`msp-${key}`);
+    panel.addEventListener('click', e => e.stopPropagation());
+
+    // Botões Todos/Limpar tratados diretamente (não chegam mais ao document)
+    panel.querySelectorAll('[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        SEL[key].clear();
+        document.querySelectorAll(`#mso-${key} input`).forEach(cb => cb.checked = false);
+        updateMSTrigger(key);
+        render();
+      });
+    });
   });
 
   document.addEventListener('click', closeAllMS);
-
-  document.addEventListener('click', e => {
-    const btn = e.target.closest('[data-act]');
-    if (!btn) return;
-    const key = btn.dataset.ms, act = btn.dataset.act;
-    if (!SEL[key]) return;
-    SEL[key].clear();
-    document.querySelectorAll(`#mso-${key} input`).forEach(cb => cb.checked = false);
-    updateMSTrigger(key);
-    render();
-  });
 }
 
 function closeAllMS() {
