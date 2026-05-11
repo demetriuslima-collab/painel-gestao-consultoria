@@ -460,7 +460,7 @@ function logout() {
 // ================================================================
 const SHEET_ID  = '1nBsorlQR29Ub_KFmr-QW2O2fi1lPKUuBIRvEKC1m8PU';
 const BASE_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=`;
-const sheetURL  = name => BASE_URL + encodeURIComponent(name);
+const sheetURL  = name => BASE_URL + encodeURIComponent(name) + '&_t=' + Date.now();
 
 const PALETTE      = ['#C82526','#2D2D2D','#d97706','#7c3aed','#0891b2','#16a34a','#ea580c','#9333ea','#65a30d','#db2777'];
 const FUNNEL_CLR   = ['#2D2D2D','#6B3333','#C82526','#991B1B'];
