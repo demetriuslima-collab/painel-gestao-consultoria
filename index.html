@@ -468,7 +468,7 @@ const FUNNEL_CLR   = ['#2D2D2D','#6B3333','#C82526','#991B1B'];
 // ================================================================
 // RUNTIME STATE
 // ================================================================
-const RAW = { leads:[], reunioes:[], vendas:[] };
+const RAW = { leads:[], reunioes:[], vendas:[], metaCaptacao:[] };
 
 // Global filter selections
 const SEL = {
@@ -705,14 +705,16 @@ async function fetchSheet(name) {
 async function loadData() {
   setStatus('loading', 'Carregando planilhas...');
   try {
-    const [leads, reunioes, vendas] = await Promise.all([
+    const [leads, reunioes, vendas, metaCaptacao] = await Promise.all([
       fetchSheet('Leads'),
       fetchSheet('Reuniões'),
       fetchSheet('Vendas'),
+      fetchSheet('Meta Captação'),
     ]);
-    RAW.leads    = leads;
-    RAW.reunioes = reunioes;
-    RAW.vendas   = vendas;
+    RAW.leads         = leads;
+    RAW.reunioes      = reunioes;
+    RAW.vendas        = vendas;
+    RAW.metaCaptacao  = metaCaptacao;
     setStatus('ok', `${leads.length} leads · ${reunioes.length} reuniões · ${vendas.length} vendas`);
     return true;
   } catch(e) {
@@ -959,6 +961,30 @@ function populateAllFilters() {
   });
 }
 
+function calcMetaCaptacao() {
+  if (!RAW.metaCaptacao.length) return null;
+  const today = new Date(); today.setHours(23,59,59,999);
+  const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
+
+  let metaMes=0, metaAteData=0, metaQtdMes=0, metaQtdAteData=0;
+  RAW.metaCaptacao.forEach(m => {
+    const d = parseDate(m.data);
+    if (!d) return;
+    const cap = parseNum(m.meta_de_captacao);
+    const qtd = parseNum(m.meta_de_quantidade);
+    if (d >= mesStart && d <= mesEnd) {
+      metaMes    += cap;
+      metaQtdMes += qtd;
+      if (d <= today) { metaAteData += cap; metaQtdAteData += qtd; }
+    }
+  });
+
+  const metaPlMedioMes     = metaQtdMes     ? metaMes / metaQtdMes : 0;
+  const metaPlMedioAteData = metaQtdAteData ? metaAteData / metaQtdAteData : 0;
+  return { metaMes, metaAteData, metaQtdMes, metaQtdAteData, metaPlMedioMes, metaPlMedioAteData };
+}
+
 function applyDatePreset(preset, isVenda = false) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1191,6 +1217,29 @@ function renderVendasCaptacao(vendas) {
   const cap   = vendas.reduce((s,v) => s + parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
   const qtd   = vendas.length;
   const plMed = qtd ? cap/qtd : 0;
+  const meta  = calcMetaCaptacao();
+
+  const fmtAtg = (real, metaAte) => {
+    if (!meta || !metaAte) return '<td class="num">—</td>';
+    const pct = real / metaAte;
+    const col = pct >= 1 ? 'var(--success)' : 'var(--danger)';
+    return `<td class="num" style="color:${col};font-weight:600">${fmtPct(pct)}</td>`;
+  };
+  const fmtDif = (real, metaAte, isCurr=true) => {
+    if (!meta || !metaAte) return '<td class="num">—</td>';
+    const d = real - metaAte;
+    const col = d >= 0 ? 'var(--success)' : 'var(--danger)';
+    const txt = isCurr ? (d>=0?'+':'')+fmtR$(d) : (d>=0?'+':'')+fmtN(Math.round(d));
+    return `<td class="num" style="color:${col}">${txt}</td>`;
+  };
+
+  const mMes    = meta ? fmtR$(meta.metaMes)            : '—';
+  const mAte    = meta ? fmtR$(meta.metaAteData)        : '—';
+  const mQtdMes = meta ? fmtN(meta.metaQtdMes)          : '—';
+  const mQtdAte = meta ? fmtN(meta.metaQtdAteData)      : '—';
+  const mPlMes  = meta ? fmtR$(meta.metaPlMedioMes)     : '—';
+  const mPlAte  = meta ? fmtR$(meta.metaPlMedioAteData) : '—';
+
   document.getElementById('vendas-card-title').textContent  = 'Metas de Captação';
   document.getElementById('vendas-chart-title').textContent = 'Captação Diária (R$)';
   document.getElementById('vendas-tbl-area').innerHTML = `
@@ -1201,11 +1250,20 @@ function renderVendasCaptacao(vendas) {
     </tr></thead>
     <tbody>
       <tr><td>Quantidade de Clientes</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">${fmtN(qtd)}</td><td class="num">—</td><td class="num">—</td></tr>
+        <td class="num">${mQtdMes}</td><td class="num">${mQtdAte}</td>
+        <td class="num">${fmtN(qtd)}</td>
+        ${fmtAtg(qtd, meta && meta.metaQtdAteData)}
+        ${fmtDif(qtd, meta && meta.metaQtdAteData, false)}</tr>
       <tr><td>Captação (Patrimônio Validado)</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">${fmtR$(cap)}</td><td class="num">—</td><td class="num">—</td></tr>
+        <td class="num">${mMes}</td><td class="num">${mAte}</td>
+        <td class="num">${fmtR$(cap)}</td>
+        ${fmtAtg(cap, meta && meta.metaAteData)}
+        ${fmtDif(cap, meta && meta.metaAteData)}</tr>
       <tr><td>PL Médio</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">${fmtR$(plMed)}</td><td class="num">—</td><td class="num">—</td></tr>
+        <td class="num">${mPlMes}</td><td class="num">${mPlAte}</td>
+        <td class="num">${fmtR$(plMed)}</td>
+        ${fmtAtg(plMed, meta && meta.metaPlMedioAteData)}
+        ${fmtDif(plMed, meta && meta.metaPlMedioAteData)}</tr>
     </tbody>
   </table></div>`;
 }
@@ -1250,14 +1308,25 @@ function renderVendasChart(vendas) {
     else                    dmSuno[lbl] += val;
   });
 
+  const metaDayMap = {};
+  RAW.metaCaptacao.forEach(m => {
+    const d = parseDate(m.data);
+    if (!d) return;
+    const lbl = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+    metaDayMap[lbl] = parseNum(m.meta_de_captacao);
+  });
+
   const datasets = STATE.vendasSubview === 'origem' ? [
     { label:'Origem Suno', data:labels.map(l=>dmSuno[l]), backgroundColor:'#2563eb', stack:'s' },
     { label:'Origem Base', data:labels.map(l=>dmBase[l]), backgroundColor:'#16a34a', stack:'s' },
   ] : [
     { label:'Captação (R$)', data:labels.map(l=>dmSuno[l]+dmBase[l]), backgroundColor:'#2563eb', stack:'s' },
   ];
-  datasets.push({ label:'Meta', type:'line', data:labels.map(()=>null),
-    borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0 });
+  datasets.push({
+    label:'Meta', type:'line',
+    data: labels.map(l => (metaDayMap[l] > 0 ? metaDayMap[l] : null)),
+    borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0, spanGaps:true,
+  });
 
   STATE.charts.vendas = new Chart(document.getElementById('vendas-chart'), {
     type:'bar', data:{ labels, datasets }, options: chartOpts(true),
@@ -1501,7 +1570,7 @@ async function refreshData() {
   const btn = document.getElementById('btn-refresh');
   btn.disabled = true;
   btn.textContent = '↻ Atualizando...';
-  RAW.leads = []; RAW.reunioes = []; RAW.vendas = [];
+  RAW.leads = []; RAW.reunioes = []; RAW.vendas = []; RAW.metaCaptacao = [];
   const ok = await loadData();
   if (ok) {
     detectDateFormat();
