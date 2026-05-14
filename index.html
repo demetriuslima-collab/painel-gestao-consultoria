@@ -687,6 +687,11 @@ function isRealizada(r) {
   return REALIZADA_VALUES.includes(normVal(r.status_reuniao));
 }
 
+function isMGM(row) {
+  const f = (row.fonte_original_pipe||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  return f === 'mgm';
+}
 function isOrigemBase(row) {
   const f = (row.fonte_original_pipe||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -1398,8 +1403,9 @@ function renderVendasCaptacao(vendas) {
 }
 
 function renderVendasOrigem(vendas) {
-  const base    = vendas.filter(isOrigemBase);
-  const suno    = vendas.filter(v => !isOrigemBase(v));
+  const semMGM  = vendas.filter(v => !isMGM(v));
+  const base    = semMGM.filter(isOrigemBase);
+  const suno    = semMGM.filter(v => !isOrigemBase(v));
   const sumCap  = arr => arr.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado),0);
   const plMed   = arr => arr.length ? sumCap(arr)/arr.length : 0;
   document.getElementById('vendas-card-title').textContent  = 'Captação por Origem';
@@ -1432,6 +1438,7 @@ function renderVendasChart(vendas) {
   parsed.forEach(({ d, row }) => {
     const lbl = dayFmt(d);
     if (dmSuno[lbl] === undefined) return;
+    if (isMGM(row)) return;
     const val = parsePatrimonio(row.adv_patrimonio_validado || row.patrimonio_validado);
     if (isOrigemBase(row)) dmBase[lbl] += val;
     else                    dmSuno[lbl] += val;
