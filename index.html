@@ -1635,57 +1635,65 @@ function render() {
 // IA CHAT
 // ================================================================
 function buildDataContext() {
-  // Aggregate counts by a field
   const countBy = (rows, field) => {
     const m = {};
-    rows.forEach(r => { const k = (r[field]||'(vazio)').trim(); m[k] = (m[k]||0)+1; });
+    rows.forEach(r => { const k = (r[field]||'(vazio)').trim(); m[k]=(m[k]||0)+1; });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`  ${k}: ${v}`).join('\n');
   };
 
-  // Monthly trend for a date field
-  const monthlyCount = (rows, field, fmt) => {
-    const m = {};
-    rows.forEach(r => { const d = parseDate(r[field], fmt); if (!d) return; const k = monthKey(d); m[k]=(m[k]||0)+1; });
-    return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`  ${monthLabel(k)}: ${v}`).join('\n');
+  // Daily counts grouped by a dimension field (returns compact TSV)
+  const dailyByField = (rows, dateField, dateFmt, groupField) => {
+    const map = {}; // date → {group → count}
+    rows.forEach(r => {
+      const d = parseDate(r[dateField], dateFmt);
+      if (!d) return;
+      const dk = d.toISOString().slice(0,10);
+      const g  = (r[groupField]||'(vazio)').trim();
+      if (!map[dk]) map[dk] = {};
+      map[dk][g] = (map[dk][g]||0) + 1;
+    });
+    const groups = [...new Set(rows.map(r=>(r[groupField]||'(vazio)').trim()))].sort();
+    const header = ['data', ...groups, 'TOTAL'].join('\t');
+    const lines  = Object.keys(map).sort().map(dk => {
+      const row   = map[dk];
+      const total = Object.values(row).reduce((a,b)=>a+b,0);
+      return [dk, ...groups.map(g=>row[g]||0), total].join('\t');
+    });
+    return `${header}\n${lines.join('\n')}`;
   };
 
-  // Leads aggregates
-  const leads = RAW.leads;
-  const leadsCtx = !leads.length ? 'LEADS: sem dados' : `LEADS (total: ${leads.length})
-Por Funil:\n${countBy(leads,'funil')}
-Por Estratégia:\n${countBy(leads,'estrategia')}
-Por Fonte Original:\n${countBy(leads,'fonte_original_pipe')}
-Por Canal Originador:\n${countBy(leads,'canal_originador')}
-Por Source (UTM):\n${countBy(leads,'deal_utm_source')}
-Por Mês:\n${monthlyCount(leads,'data_criacao',DATE_FMT)}`;
-
-  // Reuniões aggregates
-  const reun = RAW.reunioes;
-  const realizadas = reun.filter(isRealizada);
-  const reunCtx = !reun.length ? 'REUNIOES: sem dados' : `REUNIOES (total agendadas: ${reun.length}, realizadas: ${realizadas.length})
-Por Mês:\n${monthlyCount(reun,'data_reuniao',DATE_FMT)}`;
-
-  // Vendas aggregates
+  const leads  = RAW.leads;
+  const reun   = RAW.reunioes;
   const vendas = RAW.vendas;
+
+  // --- LEADS ---
+  const leadsCtx = !leads.length ? 'LEADS: sem dados' : `LEADS (total histórico: ${leads.length})
+Totais por Funil:\n${countBy(leads,'funil')}
+Totais por Estratégia:\n${countBy(leads,'estrategia')}
+Totais por Fonte Original:\n${countBy(leads,'fonte_original_pipe')}
+Totais por Canal Originador:\n${countBy(leads,'canal_originador')}
+
+LEADS DIÁRIOS POR FUNIL (todas as datas, TSV):
+${dailyByField(leads,'data_criacao',DATE_FMT,'funil')}`;
+
+  // --- REUNIÕES ---
+  const realizadas = reun.filter(isRealizada);
+  const reunCtx = !reun.length ? 'REUNIOES: sem dados' : `REUNIOES (total: ${reun.length}, realizadas: ${realizadas.length})
+REUNIÕES DIÁRIAS (todas as datas):
+${dailyByField(reun,'data_reuniao',DATE_FMT,'funil')}`;
+
+  // --- VENDAS ---
   const capTotal = vendas.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
   const capBase  = vendas.filter(isOrigemBase).reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
-  const capSuno  = capTotal - capBase;
-  const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length}, captação total: ${fmtR$(capTotal)})
-Captação Origem Suno: ${fmtR$(capSuno)} | Origem Base: ${fmtR$(capBase)}
-PL Médio: ${fmtR$(vendas.length ? capTotal/vendas.length : 0)}
+  const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length} clientes | captação total: ${fmtR$(capTotal)})
+Origem Suno: ${fmtR$(capTotal-capBase)} | Origem Base: ${fmtR$(capBase)} | PL Médio: ${fmtR$(vendas.length?capTotal/vendas.length:0)}
 Por Consultor:\n${countBy(vendas,'consultor')}
 Por Produto:\n${countBy(vendas,'produto')}
-Por Mês (data_venda):\n${monthlyCount(vendas,'data_venda',VENDA_DATE_FMT)}`;
 
-  // Compact sample: 80 most recent leads
-  const sampleLeads = [...leads].sort((a,b)=>{
-    const da=parseDate(a.data_criacao,DATE_FMT), db=parseDate(b.data_criacao,DATE_FMT);
-    return (db?db.getTime():0)-(da?da.getTime():0);
-  }).slice(0,80);
-  const sampleKeys = ['data_criacao','email','funil','estrategia','fonte_original_pipe','canal_originador','deal_utm_source'];
-  const sampleTSV = [sampleKeys.join('\t'), ...sampleLeads.map(r=>sampleKeys.map(k=>r[k]||'').join('\t'))].join('\n');
+VENDAS DIÁRIAS POR PRODUTO (todas as datas, TSV):
+${dailyByField(vendas,'data_venda',VENDA_DATE_FMT,'produto')}`;
 
-  return [leadsCtx, reunCtx, vendasCtx, `AMOSTRA LEADS (80 mais recentes):\n${sampleTSV}`].join('\n\n');
+  return [leadsCtx, reunCtx, vendasCtx].join('\n\n---\n\n');
 }
 
 function renderMarkdown(text) {
