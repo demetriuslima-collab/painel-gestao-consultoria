@@ -1709,17 +1709,6 @@ REUNIÕES POR MÊS × FUNIL:
 ${monthlyXTab(reun,'data_reuniao',DATE_FMT,'funil')}`;
 
   // --- VENDAS ---
-  // Vendas table has no funil column — join via email to leads to get funil per sale
-  const emailToFunil = {};
-  leads.forEach(l => {
-    const em = (l.email||'').toLowerCase().trim();
-    if (em && !emailToFunil[em]) emailToFunil[em] = (l.funil||'(vazio)').trim();
-  });
-  const vendasComFunil = vendas.map(v => ({
-    ...v,
-    _funil: emailToFunil[(v.email||'').toLowerCase().trim()] || '(sem match)',
-  }));
-
   const capTotal = vendas.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
   const capBase  = vendas.filter(isOrigemBase).reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
   const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length} clientes | captação: ${fmtR$(capTotal)} | PL Médio: ${fmtR$(vendas.length?capTotal/vendas.length:0)})
@@ -1727,11 +1716,11 @@ Origem Suno: ${fmtR$(capTotal-capBase)} | Origem Base: ${fmtR$(capBase)}
 Por Consultor:\n${countBy(vendas,'consultor')}
 Por Produto:\n${countBy(vendas,'produto')}
 
-VENDAS POR MÊS × FUNIL (use esta tabela para conversão por funil — contagem de clientes, funil obtido via join com leads por email):
-${monthlyXTab(vendasComFunil,'data_venda',VENDA_DATE_FMT,'_funil')}
+VENDAS POR MÊS × FUNIL (contagem de clientes por funil e mês):
+${monthlyXTab(vendas,'data_venda',VENDA_DATE_FMT,'funil')}
 
 VENDAS DIÁRIAS POR FUNIL:
-${dailyByField(vendasComFunil,'data_venda',VENDA_DATE_FMT,'_funil')}`;
+${dailyByField(vendas,'data_venda',VENDA_DATE_FMT,'funil')}`;
 
   return [leadsCtx, reunCtx, vendasCtx].join('\n\n---\n\n');
 }
