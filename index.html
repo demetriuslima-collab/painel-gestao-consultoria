@@ -1631,18 +1631,57 @@ function render() {
 // IA CHAT
 // ================================================================
 function buildDataContext() {
-  const serializeTable = (rows, name) => {
-    if (!rows.length) return `${name}: (sem dados)`;
-    const keys = Object.keys(rows[0]);
-    const lines = [keys.join('\t')];
-    rows.forEach(r => lines.push(keys.map(k => r[k]||'').join('\t')));
-    return `### ${name} (${rows.length} registros)\n${lines.join('\n')}`;
+  // Aggregate counts by a field
+  const countBy = (rows, field) => {
+    const m = {};
+    rows.forEach(r => { const k = (r[field]||'(vazio)').trim(); m[k] = (m[k]||0)+1; });
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`  ${k}: ${v}`).join('\n');
   };
-  return [
-    serializeTable(RAW.leads,    'LEADS'),
-    serializeTable(RAW.reunioes, 'REUNIOES'),
-    serializeTable(RAW.vendas,   'VENDAS'),
-  ].join('\n\n');
+
+  // Monthly trend for a date field
+  const monthlyCount = (rows, field, fmt) => {
+    const m = {};
+    rows.forEach(r => { const d = parseDate(r[field], fmt); if (!d) return; const k = monthKey(d); m[k]=(m[k]||0)+1; });
+    return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`  ${monthLabel(k)}: ${v}`).join('\n');
+  };
+
+  // Leads aggregates
+  const leads = RAW.leads;
+  const leadsCtx = !leads.length ? 'LEADS: sem dados' : `LEADS (total: ${leads.length})
+Por Funil:\n${countBy(leads,'funil')}
+Por Estratégia:\n${countBy(leads,'estrategia')}
+Por Fonte Original:\n${countBy(leads,'fonte_original_pipe')}
+Por Canal Originador:\n${countBy(leads,'canal_originador')}
+Por Source (UTM):\n${countBy(leads,'deal_utm_source')}
+Por Mês:\n${monthlyCount(leads,'data_criacao',DATE_FMT)}`;
+
+  // Reuniões aggregates
+  const reun = RAW.reunioes;
+  const realizadas = reun.filter(isRealizada);
+  const reunCtx = !reun.length ? 'REUNIOES: sem dados' : `REUNIOES (total agendadas: ${reun.length}, realizadas: ${realizadas.length})
+Por Mês:\n${monthlyCount(reun,'data_reuniao',DATE_FMT)}`;
+
+  // Vendas aggregates
+  const vendas = RAW.vendas;
+  const capTotal = vendas.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
+  const capBase  = vendas.filter(isOrigemBase).reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
+  const capSuno  = capTotal - capBase;
+  const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length}, captação total: ${fmtR$(capTotal)})
+Captação Origem Suno: ${fmtR$(capSuno)} | Origem Base: ${fmtR$(capBase)}
+PL Médio: ${fmtR$(vendas.length ? capTotal/vendas.length : 0)}
+Por Consultor:\n${countBy(vendas,'consultor')}
+Por Produto:\n${countBy(vendas,'produto')}
+Por Mês (data_venda):\n${monthlyCount(vendas,'data_venda',VENDA_DATE_FMT)}`;
+
+  // Compact sample: 80 most recent leads
+  const sampleLeads = [...leads].sort((a,b)=>{
+    const da=parseDate(a.data_criacao,DATE_FMT), db=parseDate(b.data_criacao,DATE_FMT);
+    return (db?db.getTime():0)-(da?da.getTime():0);
+  }).slice(0,80);
+  const sampleKeys = ['data_criacao','email','funil','estrategia','fonte_original_pipe','canal_originador','deal_utm_source'];
+  const sampleTSV = [sampleKeys.join('\t'), ...sampleLeads.map(r=>sampleKeys.map(k=>r[k]||'').join('\t'))].join('\n');
+
+  return [leadsCtx, reunCtx, vendasCtx, `AMOSTRA LEADS (80 mais recentes):\n${sampleTSV}`].join('\n\n');
 }
 
 function appendChatMsg(role, text) {
