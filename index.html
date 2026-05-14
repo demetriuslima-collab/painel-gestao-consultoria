@@ -318,7 +318,7 @@ tr:hover td{background:#FAFAFA}
       <div class="card-head">
         <div>
           <div class="card-title">Metas de Leads</div>
-          <div class="card-sub">Metas inativas — serão ativadas na próxima fase</div>
+          <div class="card-sub">Metas do mês corrente vs realizado</div>
         </div>
         <div class="toggle-group" id="leads-toggle">
           <button class="toggle-btn active" data-breakdown="funil">Funil</button>
@@ -468,7 +468,7 @@ const FUNNEL_CLR   = ['#2D2D2D','#6B3333','#C82526','#991B1B'];
 // ================================================================
 // RUNTIME STATE
 // ================================================================
-const RAW = { leads:[], reunioes:[], vendas:[], metaCaptacao:[] };
+const RAW = { leads:[], reunioes:[], vendas:[], metaCaptacao:[], metaLeads:[] };
 
 // Global filter selections
 const SEL = {
@@ -705,16 +705,18 @@ async function fetchSheet(name) {
 async function loadData() {
   setStatus('loading', 'Carregando planilhas...');
   try {
-    const [leads, reunioes, vendas, metaCaptacao] = await Promise.all([
+    const [leads, reunioes, vendas, metaCaptacao, metaLeads] = await Promise.all([
       fetchSheet('Leads'),
       fetchSheet('Reuniões'),
       fetchSheet('Vendas'),
       fetchSheet('Meta Captação'),
+      fetchSheet('Meta Leads'),
     ]);
     RAW.leads         = leads;
     RAW.reunioes      = reunioes;
     RAW.vendas        = vendas;
     RAW.metaCaptacao  = metaCaptacao;
+    RAW.metaLeads     = metaLeads;
     setStatus('ok', `${leads.length} leads · ${reunioes.length} reuniões · ${vendas.length} vendas`);
     return true;
   } catch(e) {
@@ -985,6 +987,37 @@ function calcMetaCaptacao() {
   return { metaMes, metaAteData, metaQtdMes, metaQtdAteData, metaPlMedioMes, metaPlMedioAteData };
 }
 
+function calcMetaLeads() {
+  if (!RAW.metaLeads.length) return null;
+  const today = new Date(); today.setHours(23,59,59,999);
+  const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
+
+  const r = { metaMes:0, metaAteData:0, porFunil:{} };
+  const funisCols = ['meta_aplicacao','meta_sessao_estrategica','meta_sessao_lmfrios'];
+
+  RAW.metaLeads.forEach(m => {
+    const d = parseDate(m.data);
+    if (!d || d < mesStart || d > mesEnd) return;
+    r.metaMes += parseNum(m.meta_total_de_leads);
+    if (d <= today) r.metaAteData += parseNum(m.meta_total_de_leads);
+    funisCols.forEach(col => {
+      if (!r.porFunil[col]) r.porFunil[col] = { mes:0, ateData:0 };
+      r.porFunil[col].mes += parseNum(m[col]);
+      if (d <= today) r.porFunil[col].ateData += parseNum(m[col]);
+    });
+  });
+  return r;
+}
+
+const FUNIL_META_MAP = {
+  'aplicacao':          'meta_aplicacao',
+  'sessao estrategica': 'meta_sessao_estrategica',
+  'sessao lm/frios':    'meta_sessao_lmfrios',
+  'lm/frios':           'meta_sessao_lmfrios',
+  'lm frios':           'meta_sessao_lmfrios',
+};
+
 function applyDatePreset(preset, isVenda = false) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1129,6 +1162,7 @@ function renderLeads() {
 
 function renderLeadsTable(leads) {
   const field = STATE.leadsBreakdown;
+  const meta  = calcMetaLeads();
   const groups = {};
   leads.forEach(l => {
     let k = (l[field]||'').trim();
@@ -1137,20 +1171,50 @@ function renderLeadsTable(leads) {
     groups[k] = (groups[k]||0) + 1;
   });
   const rows = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('leads-tbl-body').innerHTML =
-    rows.map(([g,n]) => `
-      <tr>
-        <td>${esc(g)}</td>
-        <td class="num">—</td><td class="num">—</td>
-        <td class="num">${fmtN(n)}</td>
-        <td class="num">—</td><td class="num">—</td>
-      </tr>`).join('') +
+
+  const fmtAtg = (real, metaAte) => {
+    if (!meta || !metaAte) return '<td class="num">—</td>';
+    const pct = real / metaAte;
+    const col = pct >= 1 ? 'var(--success)' : 'var(--danger)';
+    return `<td class="num" style="color:${col};font-weight:600">${fmtPct(pct)}</td>`;
+  };
+  const fmtDif = (real, metaAte) => {
+    if (!meta || !metaAte) return '<td class="num">—</td>';
+    const d = real - metaAte;
+    const col = d >= 0 ? 'var(--success)' : 'var(--danger)';
+    return `<td class="num" style="color:${col}">${(d>=0?'+':'')+fmtN(Math.round(d))}</td>`;
+  };
+
+  const bodyRows = rows.map(([g,n]) => {
+    let mMes = '—', mAte = '—', atg = '<td class="num">—</td>', dif = '<td class="num">—</td>';
+    if (meta && field === 'funil') {
+      const col = FUNIL_META_MAP[normVal(g)];
+      if (col && meta.porFunil[col]) {
+        mMes = fmtN(Math.round(meta.porFunil[col].mes));
+        mAte = fmtN(Math.round(meta.porFunil[col].ateData));
+        atg  = fmtAtg(n, meta.porFunil[col].ateData);
+        dif  = fmtDif(n, meta.porFunil[col].ateData);
+      }
+    }
+    return `<tr>
+      <td>${esc(g)}</td>
+      <td class="num">${mMes}</td><td class="num">${mAte}</td>
+      <td class="num">${fmtN(n)}</td>
+      ${atg}${dif}
+    </tr>`;
+  }).join('');
+
+  const totalMes = meta ? fmtN(Math.round(meta.metaMes)) : '—';
+  const totalAte = meta ? fmtN(Math.round(meta.metaAteData)) : '—';
+
+  document.getElementById('leads-tbl-body').innerHTML = bodyRows +
     `<tr class="tr-total">
-        <td>Total</td>
-        <td class="num">—</td><td class="num">—</td>
-        <td class="num">${fmtN(leads.length)}</td>
-        <td class="num">—</td><td class="num">—</td>
-      </tr>`;
+      <td>Total</td>
+      <td class="num">${totalMes}</td><td class="num">${totalAte}</td>
+      <td class="num">${fmtN(leads.length)}</td>
+      ${fmtAtg(leads.length, meta && meta.metaAteData)}
+      ${fmtDif(leads.length, meta && meta.metaAteData)}
+    </tr>`;
 }
 
 function renderLeadsChart(leads) {
@@ -1195,8 +1259,18 @@ function renderLeadsChart(leads) {
     backgroundColor: PALETTE[i % PALETTE.length],
     stack: 'stack',
   }));
-  datasets.push({ label:'Meta', type:'line', data:labels.map(()=>null),
-    borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0 });
+  const metaDayMap = {};
+  RAW.metaLeads.forEach(m => {
+    const d = parseDate(m.data);
+    if (!d) return;
+    const lbl = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+    metaDayMap[lbl] = parseNum(m.meta_total_de_leads);
+  });
+  datasets.push({
+    label:'Meta', type:'line',
+    data: labels.map(l => (metaDayMap[l] > 0 ? metaDayMap[l] : null)),
+    borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0, spanGaps:true,
+  });
 
   STATE.charts.leads = new Chart(document.getElementById('leads-chart'), {
     type:'bar', data:{ labels, datasets }, options: chartOpts(false),
@@ -1570,7 +1644,7 @@ async function refreshData() {
   const btn = document.getElementById('btn-refresh');
   btn.disabled = true;
   btn.textContent = '↻ Atualizando...';
-  RAW.leads = []; RAW.reunioes = []; RAW.vendas = []; RAW.metaCaptacao = [];
+  RAW.leads = []; RAW.reunioes = []; RAW.vendas = []; RAW.metaCaptacao = []; RAW.metaLeads = [];
   const ok = await loadData();
   if (ok) {
     detectDateFormat();
