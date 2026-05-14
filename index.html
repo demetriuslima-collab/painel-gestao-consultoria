@@ -1018,6 +1018,15 @@ const FUNIL_META_MAP = {
   'lm frios':           'meta_sessao_lmfrios',
 };
 
+function getFunilMetaCol(grupo) {
+  const v = normVal(grupo);
+  if (FUNIL_META_MAP[v]) return FUNIL_META_MAP[v];
+  for (const [key, col] of Object.entries(FUNIL_META_MAP)) {
+    if (v.startsWith(key + ' ') || v.startsWith(key + '/')) return col;
+  }
+  return null;
+}
+
 function applyDatePreset(preset, isVenda = false) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1188,7 +1197,7 @@ function renderLeadsTable(leads) {
   const bodyRows = rows.map(([g,n]) => {
     let mMes = '—', mAte = '—', atg = '<td class="num">—</td>', dif = '<td class="num">—</td>';
     if (meta && field === 'funil') {
-      const col = FUNIL_META_MAP[normVal(g)];
+      const col = getFunilMetaCol(g);
       if (col && meta.porFunil[col]) {
         mMes = fmtN(Math.round(meta.porFunil[col].mes));
         mAte = fmtN(Math.round(meta.porFunil[col].ateData));
