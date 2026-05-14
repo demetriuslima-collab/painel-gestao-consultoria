@@ -1635,6 +1635,7 @@ function render() {
 // IA CHAT
 // ================================================================
 function buildDataContext() {
+  console.log('[IA] RAW sizes — leads:', RAW.leads.length, 'reunioes:', RAW.reunioes.length, 'vendas:', RAW.vendas.length);
   const countBy = (rows, field) => {
     const m = {};
     rows.forEach(r => { const k = (r[field]||'(vazio)').trim(); m[k]=(m[k]||0)+1; });
@@ -1776,6 +1777,11 @@ async function submitAI() {
   const input = document.getElementById('ia-input');
   const question = input.value.trim();
   if (!question) return;
+
+  if (!RAW.leads.length && !RAW.reunioes.length && !RAW.vendas.length) {
+    appendChatMsg('assistant', 'Os dados ainda estão carregando. Aguarde um momento e tente novamente.');
+    return;
+  }
 
   input.value = '';
   const btn = document.getElementById('btn-ia-send');
