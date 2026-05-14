@@ -1641,9 +1641,30 @@ function buildDataContext() {
     return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`  ${k}: ${v}`).join('\n');
   };
 
-  // Daily counts grouped by a dimension field (returns compact TSV)
+  // Monthly cross-tab: rows indexed by month, columns by groupField (exact counts per cell)
+  const monthlyXTab = (rows, dateField, dateFmt, groupField) => {
+    const map = {}; // monthKey → {group → count}
+    rows.forEach(r => {
+      const d = parseDate(r[dateField], dateFmt);
+      if (!d) return;
+      const mk = monthKey(d);
+      const g  = (r[groupField]||'(vazio)').trim();
+      if (!map[mk]) map[mk] = {};
+      map[mk][g] = (map[mk][g]||0) + 1;
+    });
+    const groups = [...new Set(rows.map(r=>(r[groupField]||'(vazio)').trim()))].sort();
+    const header = ['mes', ...groups, 'TOTAL'].join('\t');
+    const lines  = Object.keys(map).sort().map(mk => {
+      const row   = map[mk];
+      const total = Object.values(row).reduce((a,b)=>a+b,0);
+      return [monthLabel(mk), ...groups.map(g=>row[g]||0), total].join('\t');
+    });
+    return `${header}\n${lines.join('\n')}`;
+  };
+
+  // Daily counts by group (for within-month precision)
   const dailyByField = (rows, dateField, dateFmt, groupField) => {
-    const map = {}; // date → {group → count}
+    const map = {};
     rows.forEach(r => {
       const d = parseDate(r[dateField], dateFmt);
       if (!d) return;
@@ -1673,25 +1694,32 @@ Totais por Estratégia:\n${countBy(leads,'estrategia')}
 Totais por Fonte Original:\n${countBy(leads,'fonte_original_pipe')}
 Totais por Canal Originador:\n${countBy(leads,'canal_originador')}
 
-LEADS DIÁRIOS POR FUNIL (todas as datas, TSV):
+LEADS POR MÊS × FUNIL (use esta tabela para perguntas por mês):
+${monthlyXTab(leads,'data_criacao',DATE_FMT,'funil')}
+
+LEADS DIÁRIOS POR FUNIL (use para perguntas de semanas ou dias específicos):
 ${dailyByField(leads,'data_criacao',DATE_FMT,'funil')}`;
 
   // --- REUNIÕES ---
   const realizadas = reun.filter(isRealizada);
-  const reunCtx = !reun.length ? 'REUNIOES: sem dados' : `REUNIOES (total: ${reun.length}, realizadas: ${realizadas.length})
-REUNIÕES DIÁRIAS (todas as datas):
-${dailyByField(reun,'data_reuniao',DATE_FMT,'funil')}`;
+  const reunCtx = !reun.length ? 'REUNIOES: sem dados' : `REUNIOES (total: ${reun.length} | realizadas: ${realizadas.length})
+
+REUNIÕES POR MÊS × FUNIL:
+${monthlyXTab(reun,'data_reuniao',DATE_FMT,'funil')}`;
 
   // --- VENDAS ---
   const capTotal = vendas.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
   const capBase  = vendas.filter(isOrigemBase).reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado||v.patrimonio_validado),0);
-  const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length} clientes | captação total: ${fmtR$(capTotal)})
-Origem Suno: ${fmtR$(capTotal-capBase)} | Origem Base: ${fmtR$(capBase)} | PL Médio: ${fmtR$(vendas.length?capTotal/vendas.length:0)}
+  const vendasCtx = !vendas.length ? 'VENDAS: sem dados' : `VENDAS (total: ${vendas.length} clientes | captação: ${fmtR$(capTotal)} | PL Médio: ${fmtR$(vendas.length?capTotal/vendas.length:0)})
+Origem Suno: ${fmtR$(capTotal-capBase)} | Origem Base: ${fmtR$(capBase)}
 Por Consultor:\n${countBy(vendas,'consultor')}
 Por Produto:\n${countBy(vendas,'produto')}
 
-VENDAS DIÁRIAS POR PRODUTO (todas as datas, TSV):
-${dailyByField(vendas,'data_venda',VENDA_DATE_FMT,'produto')}`;
+VENDAS POR MÊS × FUNIL (use esta tabela para conversão por funil — contagem de clientes):
+${monthlyXTab(vendas,'data_venda',VENDA_DATE_FMT,'funil')}
+
+VENDAS DIÁRIAS POR FUNIL:
+${dailyByField(vendas,'data_venda',VENDA_DATE_FMT,'funil')}`;
 
   return [leadsCtx, reunCtx, vendasCtx].join('\n\n---\n\n');
 }
@@ -1794,7 +1822,10 @@ ${buildDataContext()}
 - Use listas curtas quando houver múltiplos itens
 - Não peça confirmações — responda com os dados disponíveis
 - Se os dados não cobrirem o período perguntado, diga qual período está disponível e mostre esse
-- Máximo 3-4 parágrafos ou 6-8 itens de lista por resposta`;
+- Máximo 3-4 parágrafos ou 6-8 itens de lista por resposta
+- Para perguntas por mês: use SEMPRE a tabela "POR MÊS × FUNIL" — ela tem os totais exatos; nunca some linhas diárias manualmente
+- Para conversão por funil: divida vendas por funil (tabela VENDAS POR MÊS × FUNIL) pelos leads por funil (tabela LEADS POR MÊS × FUNIL) no mesmo período — use apenas os números dessas tabelas, nunca invente
+- Se um campo de funil nas vendas estiver vazio ou ausente, diga isso claramente em vez de atribuir a um funil de leads`;
 
     const resp = await fetch('/api/ask', {
       method: 'POST',
