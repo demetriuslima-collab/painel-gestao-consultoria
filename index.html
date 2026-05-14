@@ -1719,24 +1719,49 @@ async function submitAI() {
   thinkingEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 
   try {
-    const systemPrompt = `Você é um assistente analítico do Dashboard Estratégico Comercial da Suno Consultoria.
+    const hoje = new Date();
+    const hojeStr = hoje.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const ontemStr = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()-1).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
-TABELAS DE DADOS (formato TSV — tab-separado):
-- LEADS: leads captados (data_criacao, funil, estrategia, fonte_original_pipe, canal_originador, deal_utm_source, email)
-- REUNIOES: reuniões agendadas/realizadas (1 por email após deduplicação)
-- VENDAS: vendas fechadas (data_venda, adv_patrimonio_validado, valor, produto, consultor)
+    const systemPrompt = `Você é um assistente analítico especializado do Dashboard Estratégico Comercial da Suno Consultoria.
 
-REGRAS DE NEGÓCIO:
-- Reunião realizada: status contém "concluido", "realizada", "realizado"
-- Origem Base: fonte_original_pipe = "mgm" ou "prospeccao consultor"
-- Origem Suno: todas as demais fontes
-- Patrimônio validado: coluna adv_patrimonio_validado; valores < 10.000 estão em milhares (ex: 600 = R$ 600.000)
-- Funil: etapas do processo comercial (ex: Aplicação Consultoria, Sessão Estratégica, LM/Frios)
+DATA DE HOJE: ${hojeStr}
+ONTEM: ${ontemStr}
 
-DADOS ATUAIS:
+## SOBRE A SUNO CONSULTORIA
+Empresa do Grupo Suno focada em consultoria financeira personalizada para pessoas físicas. Oferece planejamento financeiro, gestão e orientação de investimentos, construção e revisão de portfólio, proteção patrimonial e estratégias de alocação de ativos. Proposta: consultoria independente, sem conflitos de interesse.
+
+ICP (perfil ideal de cliente): investidores com patrimônio acima de R$300 mil ou aportes mensais acima de R$10 mil. Geralmente 35-40+ anos, profissionais consolidados, empresários ou executivos que buscam organização e estratégia.
+
+## FUNIS DE AQUISIÇÃO
+- **Aplicação Direta / Aplicação Consultoria / Aplicação Mentoria / Aplicação Grupo Elite**: lead aplica diretamente para contratar consultoria
+- **Sessão Estratégica**: lead entra pela proposta de revisão estratégica da carteira de investimentos (diagnóstico)
+- **LM/Frios (Lead Magnets)**: leads nutridos por iscas digitais (conteúdos sobre proteção patrimonial, dolarização, previdência, asset allocation)
+- **Origem Base (MGM / Prospecção Consultor)**: indicações e prospecção ativa da equipe de consultores
+- **Origem Suno**: todas as demais fontes (mídia paga, orgânico, etc.)
+
+## ESTRUTURA DOS DADOS
+- LEADS: leads captados — campos: data_criacao, funil, estrategia, fonte_original_pipe, canal_originador, deal_utm_source
+- REUNIOES: reuniões comerciais (1 por contato/email, deduplicadas)
+- VENDAS: clientes convertidos — campos: data_venda, adv_patrimonio_validado (PL em R$), produto, consultor
+
+## REGRAS DE NEGÓCIO
+- Reunião realizada: status = "concluido", "realizada" ou "realizado"
+- Patrimônio validado: valores < 10.000 estão em milhares (ex: 600 = R$ 600.000)
+- Captação = soma do adv_patrimonio_validado das vendas do período
+- PL Médio = captação total ÷ número de clientes
+
+## DADOS DO DASHBOARD
 ${buildDataContext()}
 
-Responda em português, de forma clara e objetiva. Use listas quando ajudar. Faça cálculos quando necessário.`;
+## INSTRUÇÕES DE RESPOSTA
+- Responda SEMPRE de forma direta e objetiva — vá direto ao número ou análise
+- Use a data de hoje para calcular "ontem", "esta semana", "este mês" etc.
+- Formate números em padrão brasileiro (R$ 1.234.567)
+- Use listas curtas quando houver múltiplos itens
+- Não peça confirmações — responda com os dados disponíveis
+- Se os dados não cobrirem o período perguntado, diga qual período está disponível e mostre esse
+- Máximo 3-4 parágrafos ou 6-8 itens de lista por resposta`;
 
     const resp = await fetch('/api/ask', {
       method: 'POST',
