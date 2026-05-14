@@ -197,9 +197,13 @@ tr:hover td{background:#FAFAFA}
 .ia-msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
 .ia-msg.user{align-self:flex-end;align-items:flex-end}
 .ia-msg.assistant{align-self:flex-start;align-items:flex-start}
-.ia-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
-.ia-msg.user .ia-bubble{background:var(--red);color:#fff;border-bottom-right-radius:3px}
+.ia-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word}
+.ia-msg.user .ia-bubble{background:var(--red);color:#fff;border-bottom-right-radius:3px;white-space:pre-wrap}
 .ia-msg.assistant .ia-bubble{background:var(--card);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px}
+.ia-bubble strong{font-weight:700}
+.ia-bubble em{font-style:italic}
+.ia-bubble ul{margin:6px 0 6px 18px;padding:0;list-style:disc}
+.ia-bubble li{margin:2px 0}
 .ia-msg-role{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
 .ia-thinking{display:flex;gap:5px;align-items:center;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;border-bottom-left-radius:3px}
 .ia-thinking span{width:7px;height:7px;border-radius:50%;background:var(--text-faint);animation:iablink 1.2s ease-in-out infinite}
@@ -1684,13 +1688,34 @@ Por Mês (data_venda):\n${monthlyCount(vendas,'data_venda',VENDA_DATE_FMT)}`;
   return [leadsCtx, reunCtx, vendasCtx, `AMOSTRA LEADS (80 mais recentes):\n${sampleTSV}`].join('\n\n');
 }
 
+function renderMarkdown(text) {
+  let s = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // headings ## → bold line
+  s = s.replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>');
+  // bold **text**
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // italic *text*
+  s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  // bullet lists: lines starting with "- "
+  s = s.replace(/^- (.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  // newlines → <br> (outside list items)
+  s = s.replace(/\n/g, '<br>');
+  // clean up <br> inside/around lists
+  s = s.replace(/<br>(<ul>)/g, '$1').replace(/(<\/ul>)<br>/g, '$1');
+  s = s.replace(/<br>(<li>)/g, '$1').replace(/(<\/li>)<br>/g, '$1');
+  return s;
+}
+
 function appendChatMsg(role, text) {
   const area = document.getElementById('ia-chat-area');
   const wrap = document.createElement('div');
   wrap.className = `ia-msg ${role}`;
+  const content = role === 'assistant' ? renderMarkdown(text) : esc(text);
   wrap.innerHTML = `
     <div class="ia-msg-role">${role === 'user' ? 'Você' : 'IA'}</div>
-    <div class="ia-bubble">${esc(text)}</div>`;
+    <div class="ia-bubble">${content}</div>`;
   area.appendChild(wrap);
   wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
