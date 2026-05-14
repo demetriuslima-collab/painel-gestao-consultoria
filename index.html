@@ -690,7 +690,7 @@ function isRealizada(r) {
 function isOrigemBase(row) {
   const f = (row.fonte_original_pipe||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-  return f === 'mgm' || f === 'prospeccao consultor';
+  return f === 'prospeccao consultor';
 }
 
 function parseNum(s) {
