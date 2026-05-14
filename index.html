@@ -192,6 +192,20 @@ tr:hover td{background:#FAFAFA}
 /* LOGOUT */
 .btn-logout{height:30px;padding:0 14px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s}
 .btn-logout:hover{border-color:var(--red);color:var(--red);background:var(--red-light)}
+
+/* IA CHAT */
+.ia-msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
+.ia-msg.user{align-self:flex-end;align-items:flex-end}
+.ia-msg.assistant{align-self:flex-start;align-items:flex-start}
+.ia-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.ia-msg.user .ia-bubble{background:var(--red);color:#fff;border-bottom-right-radius:3px}
+.ia-msg.assistant .ia-bubble{background:var(--card);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px}
+.ia-msg-role{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;padding:0 2px}
+.ia-thinking{display:flex;gap:5px;align-items:center;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;border-bottom-left-radius:3px}
+.ia-thinking span{width:7px;height:7px;border-radius:50%;background:var(--text-faint);animation:iablink 1.2s ease-in-out infinite}
+.ia-thinking span:nth-child(2){animation-delay:.2s}
+.ia-thinking span:nth-child(3){animation-delay:.4s}
+@keyframes iablink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 </style>
 </head>
 <body>
@@ -249,6 +263,9 @@ tr:hover td{background:#FAFAFA}
     </button>
     <button class="tab-btn" data-tab="cohort">
       <span class="nav-icon">⊞</span> Cohort (Safra)
+    </button>
+    <button class="tab-btn" data-tab="ia">
+      <span class="nav-icon">✦</span> Pergunte à IA
     </button>
   </aside>
 
@@ -405,6 +422,29 @@ tr:hover td{background:#FAFAFA}
       </div>
     </div>
   </section>
+
+  <section class="view" id="view-ia">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Pergunte à IA</div>
+          <div class="card-sub">Faça perguntas sobre os dados do dashboard</div>
+        </div>
+        <button class="btn-clear" onclick="clearAIChat()">✕ Limpar conversa</button>
+      </div>
+      <div id="ia-chat-area" style="display:flex;flex-direction:column;gap:12px;min-height:200px;max-height:520px;overflow-y:auto;padding:4px 0 16px;"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;">
+        <textarea id="ia-input" placeholder="Ex: Qual foi a taxa de conversão de leads em vendas no mês atual?" rows="2"
+          style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;outline:none;transition:border-color .15s;"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitAI();}"></textarea>
+        <button id="btn-ia-send" onclick="submitAI()"
+          style="height:40px;padding:0 20px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0;">
+          Enviar
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:8px;">Enter para enviar · Shift+Enter para nova linha</div>
+    </div>
+  </section>
 </main>
   </div><!-- /.main-area -->
 </div><!-- /.app-body -->
@@ -418,6 +458,7 @@ const USERS = [
   { user: 'consultoria',  pass: 'sunoconsultoria' },
 ];
 const SESSION_KEY = 'suno_dash_auth';
+const ANTHROPIC_KEY = ''; // preencher com sk-ant-...
 
 function checkSession() {
   return sessionStorage.getItem(SESSION_KEY) === 'ok';
@@ -490,6 +531,8 @@ const STATE = {
   vendasSubview:  'captacao',
   charts:         {},
 };
+
+const AI_CHAT = []; // histórico: [{role:'user'|'assistant', content:'...'}]
 
 // Auto-detected at load time
 let REUNIAO_STATUS_KEY = null; // column name that holds "concluido"
@@ -1581,7 +1624,116 @@ function render() {
     case 'leads':  renderLeads();  break;
     case 'vendas': renderVendas(); break;
     case 'cohort': renderCohort(); break;
+    case 'ia':     break;
   }
+}
+
+// ================================================================
+// IA CHAT
+// ================================================================
+function buildDataContext() {
+  const serializeTable = (rows, name) => {
+    if (!rows.length) return `${name}: (sem dados)`;
+    const keys = Object.keys(rows[0]);
+    const lines = [keys.join('\t')];
+    rows.forEach(r => lines.push(keys.map(k => r[k]||'').join('\t')));
+    return `### ${name} (${rows.length} registros)\n${lines.join('\n')}`;
+  };
+  return [
+    serializeTable(RAW.leads,    'LEADS'),
+    serializeTable(RAW.reunioes, 'REUNIOES'),
+    serializeTable(RAW.vendas,   'VENDAS'),
+  ].join('\n\n');
+}
+
+function appendChatMsg(role, text) {
+  const area = document.getElementById('ia-chat-area');
+  const wrap = document.createElement('div');
+  wrap.className = `ia-msg ${role}`;
+  wrap.innerHTML = `
+    <div class="ia-msg-role">${role === 'user' ? 'Você' : 'IA'}</div>
+    <div class="ia-bubble">${esc(text)}</div>`;
+  area.appendChild(wrap);
+  wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function clearAIChat() {
+  AI_CHAT.length = 0;
+  document.getElementById('ia-chat-area').innerHTML = '';
+}
+
+async function submitAI() {
+  const input = document.getElementById('ia-input');
+  const question = input.value.trim();
+  if (!question) return;
+  if (!ANTHROPIC_KEY) {
+    alert('API key não configurada. Preencha a constante ANTHROPIC_KEY no código.');
+    return;
+  }
+
+  input.value = '';
+  const btn = document.getElementById('btn-ia-send');
+  btn.disabled = true;
+
+  AI_CHAT.push({ role:'user', content: question });
+  appendChatMsg('user', question);
+
+  const thinkingEl = document.createElement('div');
+  thinkingEl.className = 'ia-msg assistant';
+  thinkingEl.innerHTML = `<div class="ia-thinking"><span></span><span></span><span></span></div>`;
+  document.getElementById('ia-chat-area').appendChild(thinkingEl);
+  thinkingEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+  try {
+    const systemPrompt = `Você é um assistente analítico do Dashboard Estratégico Comercial da Suno Consultoria.
+
+TABELAS DE DADOS (formato TSV — tab-separado):
+- LEADS: leads captados (data_criacao, funil, estrategia, fonte_original_pipe, canal_originador, deal_utm_source, email)
+- REUNIOES: reuniões agendadas/realizadas (1 por email após deduplicação)
+- VENDAS: vendas fechadas (data_venda, adv_patrimonio_validado, valor, produto, consultor)
+
+REGRAS DE NEGÓCIO:
+- Reunião realizada: status contém "concluido", "realizada", "realizado"
+- Origem Base: fonte_original_pipe = "mgm" ou "prospeccao consultor"
+- Origem Suno: todas as demais fontes
+- Patrimônio validado: coluna adv_patrimonio_validado; valores < 10.000 estão em milhares (ex: 600 = R$ 600.000)
+- Funil: etapas do processo comercial (ex: Aplicação Consultoria, Sessão Estratégica, LM/Frios)
+
+DADOS ATUAIS:
+${buildDataContext()}
+
+Responda em português, de forma clara e objetiva. Use listas quando ajudar. Faça cálculos quando necessário.`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: AI_CHAT,
+      }),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+
+    const answer = data.content[0].text;
+    AI_CHAT.push({ role:'assistant', content: answer });
+    thinkingEl.remove();
+    appendChatMsg('assistant', answer);
+  } catch(e) {
+    thinkingEl.remove();
+    appendChatMsg('assistant', `❌ Erro: ${e.message}`);
+  }
+
+  btn.disabled = false;
+  document.getElementById('ia-input').focus();
 }
 
 // ================================================================
