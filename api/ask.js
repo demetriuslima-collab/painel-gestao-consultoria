@@ -1,5 +1,9 @@
 const ANTHROPIC_KEY = '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';
 
+export const config = {
+  api: { bodyParser: { sizeLimit: '10mb' } },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
