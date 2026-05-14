@@ -458,7 +458,6 @@ const USERS = [
   { user: 'consultoria',  pass: 'sunoconsultoria' },
 ];
 const SESSION_KEY = 'suno_dash_auth';
-const ANTHROPIC_KEY = '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';
 
 function checkSession() {
   return sessionStorage.getItem(SESSION_KEY) === 'ok';
@@ -1666,10 +1665,6 @@ async function submitAI() {
   const input = document.getElementById('ia-input');
   const question = input.value.trim();
   if (!question) return;
-  if (!ANTHROPIC_KEY) {
-    alert('API key não configurada. Preencha a constante ANTHROPIC_KEY no código.');
-    return;
-  }
 
   input.value = '';
   const btn = document.getElementById('btn-ia-send');
@@ -1704,14 +1699,9 @@ ${buildDataContext()}
 
 Responda em português, de forma clara e objetiva. Use listas quando ajudar. Faça cálculos quando necessário.`;
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('/api/ask', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
