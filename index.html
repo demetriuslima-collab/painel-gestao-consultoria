@@ -281,7 +281,9 @@ tr:hover td{background:#FAFAFA}
           <button class="preset-btn" onclick="applyDatePreset('ontem')">Ontem</button>
           <button class="preset-btn" onclick="applyDatePreset('7dias')">Últ. 7 dias</button>
           <button class="preset-btn" onclick="applyDatePreset('mes')">Mês atual</button>
+          <button class="preset-btn" onclick="applyDatePreset('mespassado')">Mês passado</button>
           <button class="preset-btn" onclick="applyDatePreset('30dias')">Últ. 30 dias</button>
+          <button class="preset-btn" onclick="applyDatePreset('3meses')">Últ. 3 meses</button>
         </div>
       </div>
       <div class="filter-group">
@@ -379,7 +381,9 @@ tr:hover td{background:#FAFAFA}
           <button class="preset-btn" onclick="applyDatePreset('ontem', true)">Ontem</button>
           <button class="preset-btn" onclick="applyDatePreset('7dias', true)">Últ. 7 dias</button>
           <button class="preset-btn" onclick="applyDatePreset('mes', true)">Mês atual</button>
+          <button class="preset-btn" onclick="applyDatePreset('mespassado', true)">Mês passado</button>
           <button class="preset-btn" onclick="applyDatePreset('30dias', true)">Últ. 30 dias</button>
+          <button class="preset-btn" onclick="applyDatePreset('3meses', true)">Últ. 3 meses</button>
         </div>
       </div>
       <div class="filter-group">
@@ -1087,9 +1091,15 @@ function applyDatePreset(preset, isVenda = false) {
   } else if (preset === 'mes') {
     di = new Date(today.getFullYear(), today.getMonth(), 1);
     df = new Date(today);
+  } else if (preset === 'mespassado') {
+    di = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    df = new Date(today.getFullYear(), today.getMonth(), 0);
   } else if (preset === '30dias') {
     di = new Date(today); di.setDate(di.getDate() - 29);
     df = new Date(today);
+  } else if (preset === '3meses') {
+    di = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+    df = new Date(today.getFullYear(), today.getMonth(), 0);
   }
 
   const toInput = d => d.toISOString().slice(0, 10);
