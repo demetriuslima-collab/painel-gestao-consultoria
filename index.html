@@ -1643,10 +1643,11 @@ function buildDataContext() {
   };
 
   // Monthly cross-tab: rows indexed by month, columns by groupField (exact counts per cell)
-  const monthlyXTab = (rows, dateField, dateFmt, groupField) => {
+  // extractDate: optional fn(row)→Date; when provided, dateField/dateFmt are ignored
+  const monthlyXTab = (rows, dateField, dateFmt, groupField, extractDate) => {
     const map = {}; // monthKey → {group → count}
     rows.forEach(r => {
-      const d = parseDate(r[dateField], dateFmt);
+      const d = extractDate ? extractDate(r) : parseDate(r[dateField], dateFmt);
       if (!d) return;
       const mk = monthKey(d);
       const g  = (r[groupField]||'(vazio)').trim();
@@ -1716,8 +1717,8 @@ Origem Suno: ${fmtR$(capTotal-capBase)} | Origem Base: ${fmtR$(capBase)}
 Por Consultor:\n${countBy(vendas,'consultor')}
 Por Produto:\n${countBy(vendas,'produto')}
 
-VENDAS POR MÊS × FUNIL (contagem de clientes por funil e mês):
-${monthlyXTab(vendas,'data_venda',VENDA_DATE_FMT,'funil')}
+VENDAS POR MÊS × FUNIL (por mês de criação do lead — mesma lógica da aba Funil; use esta tabela para perguntas de conversão por mês):
+${monthlyXTab(vendas, null, null, 'funil', v => parseDate(v.data_criacao) || parseDate(v.data_venda, VENDA_DATE_FMT))}
 
 VENDAS DIÁRIAS POR FUNIL:
 ${dailyByField(vendas,'data_venda',VENDA_DATE_FMT,'funil')}`;
