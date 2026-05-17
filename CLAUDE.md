@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estrutura do projeto
 
-Arquivo único: `index.html` (~1.500 linhas). Sem build, sem framework, sem backend. **Nunca criar arquivos separados de CSS/JS** — todo o código vive no `index.html`.
+Arquivo único: `index.html` (~1.961 linhas). Sem build, sem framework, sem backend. **Nunca criar arquivos separados de CSS/JS** — todo o código vive no `index.html`.
+
+Há também um job de email diário em `scripts/` (Node.js, independente do painel).
 
 Dependências via CDN (não instalar via npm):
 - Chart.js 4.4.0 — gráficos de barras/linha
@@ -87,6 +89,35 @@ MGM entra em **Origem Suno** (não é Origem Base).
 
 ### Aba Vendas tem campo `funil` próprio
 A aba Vendas da planilha possui coluna `funil` diretamente — não fazer join por email com leads para obter o funil. `passGlobalVendas` filtra por `row.funil` e `buildDataContext()` usa `row.funil` no cross-tab mensal. Nunca usar email-join para derivar funil nas vendas; os números ficam incorretos.
+
+## Email Diário Automático
+
+Cron via GitHub Actions (`0 11 * * *` = 8h BRT). Script em `scripts/daily-email.js`.
+
+**Arquitetura:**
+```
+GitHub Actions → scripts/daily-email.js
+  ├── fetchSheets()        — lê as 5 abas do Google Sheets via PapaParse (Node)
+  ├── aggregateYesterday() — filtra pelo dia anterior, agrega métricas
+  ├── generateAnalysis()   — Claude Haiku gera análise (fetch direto, sem SDK)
+  └── sendEmail()          — SendGrid API v3 (fetch direto, sem SDK)
+```
+
+**Secrets no GitHub** (nunca hardcoded):
+- `ANTHROPIC_KEY` — mesma usada no Vercel
+- `SENDGRID_API_KEY` — permissão Mail Send
+- `EMAIL_FROM` — remetente verificado no SendGrid
+- `EMAIL_RECIPIENTS` — lista separada por vírgula
+
+**Testar manualmente:** Actions → Daily Commercial Summary → Run workflow → campo `yesterday_override: YYYY-MM-DD`
+
+**Dependências:** apenas `papaparse` npm (em `scripts/package.json`). Anthropic e SendGrid via `fetch` nativo do Node 24.
+
+**Quirks:**
+- `YESTERDAY_OVERRIDE` env var permite sobrescrever a data para testes
+- Utilities (`normalizeKey`, `COL_ALIASES`, `parseDate`, `parsePatrimonio`, etc.) são portadas de `index.html` — manter em sincronia se houver mudanças críticas
+- Erro no Anthropic → email enviado sem seção de análise (não bloqueia)
+- Erro no SendGrid → `process.exit(1)` (Actions marca o job como falha)
 
 ## Aba Pergunte à IA
 
