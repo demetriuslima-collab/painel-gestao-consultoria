@@ -2,7 +2,7 @@ name: Daily Commercial Summary
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 08:00 BRT (UTC-3, Brazil has no DST since 2019)
+    - cron: '30 10 * * *'  # 07:30 BRT (UTC-3, Brazil has no DST since 2019)
   workflow_dispatch:         # allows manual runs for testing
     inputs:
       yesterday_override:
