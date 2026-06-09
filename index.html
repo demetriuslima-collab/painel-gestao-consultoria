@@ -314,6 +314,14 @@ tr:hover td{background:#FAFAFA}
         <label class="filter-label">Canal Originador</label>
         <div class="multi-select" id="ms-canal"></div>
       </div>
+      <div class="filter-group">
+        <label class="filter-label">Closer (Venda)</label>
+        <div class="multi-select" id="ms-closer"></div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">SDR (Agendamento)</label>
+        <div class="multi-select" id="ms-sdr"></div>
+      </div>
       <button class="btn-clear" onclick="clearFilters()">✕ Limpar</button>
     </div>
 
@@ -525,6 +533,8 @@ const SEL = {
   funil:             new Set(),
   fonteOriginalPipe: new Set(),
   canalOriginador:   new Set(),
+  closerResponsavel: new Set(),
+  sdrResponsavel:    new Set(),
 };
 
 const F = {   // active filter values
@@ -575,6 +585,8 @@ const COL_ALIASES = {
   valor:               ['valor','value','receita','valor_contrato'],
   produto:             ['produto','product'],
   consultor:           ['consultor','consultor_responsavel'],
+  closer_responsavel:  ['adv_aut_closer_responsavel','closer_responsavel','closer'],
+  sdr_responsavel:     ['adv_aut_sdr_responsavel','sdr_responsavel','sdr'],
 };
 
 // Build reverse lookup once: normalizedRealKey → canonicalKey
@@ -888,6 +900,8 @@ function passGlobalVendas(row) {
   if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                       return false;
   if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
   if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))  return false;
+  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
+  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))    return false;
   return true;
 }
 
@@ -914,6 +928,8 @@ const MS_CFG = {
   funil:             { el: 'ms-funil',      field: 'funil' },
   fonteOriginalPipe: { el: 'ms-fonte',      field: 'fonte_original_pipe' },
   canalOriginador:   { el: 'ms-canal',      field: 'canal_originador' },
+  closerResponsavel: { el: 'ms-closer',     field: 'closer_responsavel' },
+  sdrResponsavel:    { el: 'ms-sdr',        field: 'sdr_responsavel' },
 };
 
 function buildAllMS() {
@@ -1455,15 +1471,22 @@ function renderVendasChart(vendas) {
     metaDayMap[lbl] = parseNum(m.meta_de_captacao);
   });
 
+  const barColors = labels.map(l => {
+    const meta = metaDayMap[l];
+    if (meta === undefined || meta <= 0) return '#2563eb';
+    const total = dmSuno[l] + dmBase[l];
+    return total >= meta ? '#16a34a' : '#ef4444';
+  });
+
   const datasets = STATE.vendasSubview === 'origem' ? [
-    { label:'Origem Suno', data:labels.map(l=>dmSuno[l]), backgroundColor:'#2563eb', stack:'s' },
-    { label:'Origem Base', data:labels.map(l=>dmBase[l]), backgroundColor:'#16a34a', stack:'s' },
+    { label:'Origem Suno', data:labels.map(l=>dmSuno[l]), backgroundColor:barColors, stack:'s' },
+    { label:'Origem Base', data:labels.map(l=>dmBase[l]), backgroundColor:barColors, stack:'s' },
   ] : [
-    { label:'Captação (R$)', data:labels.map(l=>dmSuno[l]+dmBase[l]), backgroundColor:'#2563eb', stack:'s' },
+    { label:'Captação (R$)', data:labels.map(l=>dmSuno[l]+dmBase[l]), backgroundColor:barColors, stack:'s' },
   ];
   datasets.push({
     label:'Meta', type:'line',
-    data: labels.map(l => (metaDayMap[l] > 0 ? metaDayMap[l] : null)),
+    data: labels.map(l => (l in metaDayMap ? metaDayMap[l] : null)),
     borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0, spanGaps:true,
   });
 
