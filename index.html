@@ -579,7 +579,7 @@ const COL_ALIASES = {
   fonte_original_pipe: ['fonte_original_pipe','fonte_original_pipes','fonte_original','fonteoriginalpipe'],
   canal_originador:    ['canal_originador','canal_originador_do_lead','vendas_canal_originador_do_lead_analises','canal_orig'],
   status_reuniao:      ['status_reuniao','status','situacao','status_da_reuniao','reuniao_status'],
-  data_venda:          ['data_venda','data_de_venda','datavenda','data_fechamento','consultoria_data_da_contratacao_diario','data_contratacao','data_da_contratacao'],
+  data_venda:          ['data_venda','data_de_venda','datavenda','data_fechamento','consultoria_data_da_contratacao','consultoria_data_da_contratacao_diario','data_contratacao','data_da_contratacao'],
   data_reuniao:        ['data_reuniao','data_da_reuniao','datareuniao'],
   patrimonio_validado: ['adv_patrimonio_validado','patrimonio_validado','patrimonio','aum','patrimonio_aum','patrimonio_cliente'],
   valor:               ['valor','value','receita','valor_contrato'],
@@ -1032,6 +1032,7 @@ function populateAllFilters() {
 function calcMetaCaptacao() {
   if (!RAW.metaCaptacao.length) return null;
   const today = new Date(); today.setHours(23,59,59,999);
+  const ontem = new Date(today); ontem.setDate(ontem.getDate() - 1);
   const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
 
@@ -1044,7 +1045,7 @@ function calcMetaCaptacao() {
     if (d >= mesStart && d <= mesEnd) {
       metaMes    += cap;
       metaQtdMes += qtd;
-      if (d <= today) { metaAteData += cap; metaQtdAteData += qtd; }
+      if (d <= ontem) { metaAteData += cap; metaQtdAteData += qtd; }
     }
   });
 
@@ -1056,6 +1057,7 @@ function calcMetaCaptacao() {
 function calcMetaLeads() {
   if (!RAW.metaLeads.length) return null;
   const today = new Date(); today.setHours(23,59,59,999);
+  const ontem = new Date(today); ontem.setDate(ontem.getDate() - 1);
   const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
 
@@ -1066,11 +1068,11 @@ function calcMetaLeads() {
     const d = parseDate(m.data);
     if (!d || d < mesStart || d > mesEnd) return;
     r.metaMes += parseNum(m.meta_total_de_leads);
-    if (d <= today) r.metaAteData += parseNum(m.meta_total_de_leads);
+    if (d <= ontem) r.metaAteData += parseNum(m.meta_total_de_leads);
     funisCols.forEach(col => {
       if (!r.porFunil[col]) r.porFunil[col] = { mes:0, ateData:0 };
       r.porFunil[col].mes += parseNum(m[col]);
-      if (d <= today) r.porFunil[col].ateData += parseNum(m[col]);
+      if (d <= ontem) r.porFunil[col].ateData += parseNum(m[col]);
     });
   });
   return r;
