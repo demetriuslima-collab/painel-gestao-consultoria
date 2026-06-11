@@ -471,7 +471,7 @@ function buildEmailHTML(metrics, analysis) {
   <!-- FOOTER -->
   <div style="text-align:center;padding:16px 0;font-size:11px;color:#9CA3AF;line-height:1.6;">
     Dashboard Estratégico Comercial · Suno Consultoria<br>
-    Dados referentes a ${dateShort} · Enviado automaticamente às 8h BRT
+    Dados referentes a ${dateShort} · Enviado automaticamente por volta das 09h BRT
   </div>
 
 </div>

@@ -92,7 +92,7 @@ A aba Vendas da planilha possui coluna `funil` diretamente — não fazer join p
 
 ## Email Diário Automático
 
-Cron via GitHub Actions (`0 11 * * *` = 8h BRT). Script em `scripts/daily-email.js`.
+Cron via GitHub Actions (`43 8 * * *` UTC = 05:43 BRT). O agendamento `schedule` do GitHub Actions tem atraso médio de ~3h (variando ~1h30 a ~5h), então o horário foi adiantado para mirar entrega por volta das 09h BRT — não é uma garantia exata. Script em `scripts/daily-email.js`.
 
 **Arquitetura:**
 ```

@@ -2,7 +2,7 @@ name: Daily Commercial Summary
 
 on:
   schedule:
-    - cron: '30 10 * * *'  # 07:30 BRT (UTC-3, Brazil has no DST since 2019)
+    - cron: '43 8 * * *'  # 05:43 BRT (UTC-3) — adiantado para compensar atraso médio de ~3h do GitHub Actions e mirar entrega por volta das 09h BRT
   workflow_dispatch:         # allows manual runs for testing
     inputs:
       yesterday_override:
