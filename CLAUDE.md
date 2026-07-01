@@ -87,7 +87,10 @@ A coluna canônica é `adv_patrimonio_validado` (de `[ADV] Patrimônio validado`
 `REUNIAO_STATUS_KEY` é detectado automaticamente em `detectReuniaoStatus()` — busca qual coluna da aba Reuniões contém valores como "concluido"/"realizada". Usar sempre `isRealizada(r)`, nunca comparar a coluna diretamente.
 
 ### Deduplicação de reuniões
-`filteredReuniones()` deduplica por email (1 reunião por contato). Comportamento intencional.
+`filteredReuniones()` deduplica por email (1 reunião por contato) — **exceto quando `tipo_reuniao` difere**: nesse caso a chave de dedup é `email|tipo_reuniao` (normalizado via `normVal()`), então o mesmo contato pode contar mais de uma vez se tiver reuniões de tipos diferentes. Sem a coluna Tipo de Reunião (`TIPO_IN_REUNIOES === false`), o comportamento permanece dedup só por email. Não afeta `emailsTipoRealizadas()` nem `renderReunioes()`, que já derivam direto de `RAW.reunioes` sem passar por esse dedup.
+
+### Filtro Closer/SDR também vale para Leads e Reuniões
+`passGlobal()` (usada por `filteredLeads()` e `filteredReuniones()`) filtra por `SEL.closerResponsavel`/`SEL.sdrResponsavel`, igual a `passGlobalVendas()`/`passGlobalNegociacao()`. Isso significa que leads/reuniões sem esses campos preenchidos (ex: lead que ainda não teve closer atribuído) somem da contagem quando o filtro estiver ativo — comportamento intencional, pedido explicitamente para consertar o Funil e a Tabela Dinâmica (coluna Leads/Marcadas/Realizadas não respeitava o filtro de Closer antes).
 
 ### Origem Base vs Origem Suno
 `isOrigemBase(row)` retorna `true` quando `fonte_original_pipe` é `'prospeccao consultor'` (comparação normalizada, sem acentos).
@@ -109,6 +112,9 @@ A coluna real é `Tipo de chamada e reunião` (alias canônico `tipo_reuniao`), 
 
 ### Patrimônio (faixas) — ordenação fixa, não por contagem
 A coluna `Patrimônio Investido - Grupo` (alias `patrimonio_investido_grupo`) tem valores em **faixas de texto** (ex: `"Entre R$ 300.000 a R$ 1.000.000"`), não números — não dá para ordenar alfabeticamente nem por contagem. A constante `PATRIMONIO_ORDER` fixa a ordem crescente correta; usar `orderLeadGroups()` (tabela/gráfico de Leads) ou `orderPivotChildren()` (Pivot) para essa dimensão, nunca um `.sort()` genérico.
+
+### Tabela Dinâmica — ordenação por clique no header
+Colunas numéricas do header (`.pv-sort`, `data-sort` = `L`/`LM`/`M`/`MR`/`R`/`RV`/`V`/`LV`) são clicáveis: `STATE.pivotSortCol`/`STATE.pivotSortDir` guardam a coluna/direção ativa, alternando asc/desc a cada clique na mesma coluna (nova coluna sempre começa em `desc`). `orderPivotChildren()` usa o mapa `PIVOT_SORT_COLS` para essa ordenação, mas **preserva a prioridade das ordenações especiais** de `patrimonio_investido_grupo` (faixas fixas) e `__data__` (cronológica) — essas duas dimensões não são reordenáveis por clique. Clique dispara `renderPivot()` completo (não só `renderPivotTable()`) para atualizar a seta ▲/▼ no header.
 
 ### Aba Forecast — base `Negociação`, sem `data_venda`
 A base `Negociação` é estruturalmente parecida com Vendas mas **sem coluna de contratação** (o negócio ainda não foi fechado) — por isso `filteredNegociacao()`/`passGlobalNegociacao()` usam só `data_criacao`, sem o equivalente a `applyVendaDate`. Os fatores de conversão por Prioridade (`STATE.forecastFactors`, default 60/25/5%) são editáveis via input numérico e recalculam só a projeção (`computeAndRenderForecast()`), sem rebuildar os chips de Etapa do Negócio. O filtro de Etapa (`STATE.forecastEtapa`, chips em `forecast-etapa-chips`) usa `data-idx` apontando para o array `FORECAST_ETAPAS` — **não** embute a string da etapa num atributo `data-*` — para evitar bugs de mismatch de string/encoding entre o que é renderizado e o que é lido no clique.

@@ -163,6 +163,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pivot-tbl{width:100%;border-collapse:collapse;font-size:13px}
 .pivot-tbl th{background:var(--bg);padding:9px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
 .pivot-tbl th:first-child{text-align:left}
+.pv-sort{cursor:pointer;user-select:none}
+.pv-sort:hover{color:var(--red)}
 .pivot-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
 .pivot-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
 .pv-dim{color:var(--text)}
@@ -770,6 +772,8 @@ const STATE = {
   pivotExpanded:  new Set(),    // caminhos expandidos na árvore
   pivotTree:      null,         // cache da árvore construída
   pivotPaths:     [],           // índice pid → caminho (para o handler de clique de expansão)
+  pivotSortCol:   'L',           // coluna ativa de ordenação (ver PIVOT_SORT_COLS)
+  pivotSortDir:   'desc',        // 'asc' | 'desc'
   reunioesBreakdown: 'tipo_reuniao', // empilhamento do gráfico de reuniões
   reunioesTimeMode:  'mes',          // 'dia' | 'semana' | 'mes'
   forecastFactors: { alta:60, media:25, baixa:5 }, // taxas (%) editáveis de conversão projetada
@@ -1110,6 +1114,8 @@ function passGlobal(row) {
   if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                       return false;
   if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
   if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))  return false;
+  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
+  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))    return false;
   if (SEL.patrimonio.size        > 0 && !SEL.patrimonio.has(row.patrimonio_investido_grupo)) return false;
   return true;
 }
@@ -1124,12 +1130,14 @@ function passTipoReuniao(row) {
   return SEL.tipoReuniao.has((row.tipo_reuniao||'').trim());
 }
 
-// Reuniões: filter directly + deduplicate by email (1 per email)
+// Reuniões: filter directly + deduplicate by email (1 per email, exceto quando o
+// Tipo de Reunião difere — nesse caso cada tipo conta como reunião distinta do contato).
 function filteredReuniones() {
   const seen = new Set();
   return RAW.reunioes.filter(passGlobal).filter(passTipoReuniao).filter(r => {
-    const key = (r.email||'').toLowerCase().trim();
-    if (!key) return true; // no email → keep
+    const em = (r.email||'').toLowerCase().trim();
+    if (!em) return true; // no email → keep
+    const key = TIPO_IN_REUNIOES ? `${em}|${normVal(r.tipo_reuniao)}` : em;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -2406,13 +2414,28 @@ function buildPivotTree(dims) {
   return root;
 }
 
+// Colunas clicáveis do header da Tabela Dinâmica → acessor do valor a ordenar.
+// Taxas usam -1 como fallback (numerador zerado) para "—" ficar sempre no fim, asc ou desc.
+const PIVOT_SORT_COLS = {
+  L:  { get: n => n.L },
+  LM: { get: n => n.L ? n.M / n.L : -1 },
+  M:  { get: n => n.M },
+  MR: { get: n => n.M ? n.R / n.M : -1 },
+  R:  { get: n => n.R },
+  RV: { get: n => n.R ? n.V / n.R : -1 },
+  V:  { get: n => n.V },
+  LV: { get: n => n.L ? n.V / n.L : -1 },
+};
+
 function orderPivotChildren(entries, dim) {
   if (dim === 'patrimonio_investido_grupo') {
     const idx = v => { const i = PATRIMONIO_ORDER.indexOf(v); return i === -1 ? PATRIMONIO_ORDER.length : i; };
     return entries.sort((a,b) => (idx(a[0]) - idx(b[0])) || (b[1].L - a[1].L));
   }
   if (dim === '__data__') return entries.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-  return entries.sort((a,b) => (b[1].L - a[1].L) || (b[1].V - a[1].V));
+  const { get } = PIVOT_SORT_COLS[STATE.pivotSortCol] || PIVOT_SORT_COLS.L;
+  const dir = STATE.pivotSortDir === 'asc' ? 1 : -1;
+  return entries.sort((a,b) => (get(a[1]) - get(b[1])) * dir || (b[1].L - a[1].L));
 }
 
 const pvPct = (a,b) => b ? fmtPct(a/b) : '—';
@@ -2497,6 +2520,11 @@ function renderPivotTable() {
   if (tb) tb.innerHTML = out.join('');
 }
 
+function pivotSortArrow(col) {
+  if (STATE.pivotSortCol !== col) return '';
+  return STATE.pivotSortDir === 'desc' ? ' ▼' : ' ▲';
+}
+
 function renderPivot() {
   renderPivotParams();
   renderPivotGran();
@@ -2505,10 +2533,10 @@ function renderPivot() {
     <table class="pivot-tbl">
       <thead><tr>
         <th>Parâmetro</th>
-        <th class="num">Leads</th><th class="num">L→M</th>
-        <th class="num">Marcadas</th><th class="num">M→R</th>
-        <th class="num">Realizadas</th><th class="num">R→V</th>
-        <th class="num">Vendas</th><th class="num">Conv. L→V</th>
+        <th class="num pv-sort" data-sort="L">Leads${pivotSortArrow('L')}</th><th class="num pv-sort" data-sort="LM">L→M${pivotSortArrow('LM')}</th>
+        <th class="num pv-sort" data-sort="M">Marcadas${pivotSortArrow('M')}</th><th class="num pv-sort" data-sort="MR">M→R${pivotSortArrow('MR')}</th>
+        <th class="num pv-sort" data-sort="R">Realizadas${pivotSortArrow('R')}</th><th class="num pv-sort" data-sort="RV">R→V${pivotSortArrow('RV')}</th>
+        <th class="num pv-sort" data-sort="V">Vendas${pivotSortArrow('V')}</th><th class="num pv-sort" data-sort="LV">Conv. L→V${pivotSortArrow('LV')}</th>
       </tr></thead>
       <tbody id="pivot-tbody"></tbody>
     </table>`;
@@ -2921,6 +2949,15 @@ function bindEvents() {
 
     const gran = e.target.closest('.pv-gran-btn');
     if (gran) { STATE.pivotDateGran = gran.dataset.gran; STATE.pivotExpanded.clear(); renderPivot(); return; }
+
+    const sort = e.target.closest('.pv-sort');
+    if (sort) {
+      const col = sort.dataset.sort;
+      if (STATE.pivotSortCol === col) STATE.pivotSortDir = STATE.pivotSortDir === 'desc' ? 'asc' : 'desc';
+      else { STATE.pivotSortCol = col; STATE.pivotSortDir = 'desc'; }
+      renderPivot();
+      return;
+    }
 
     const tog = e.target.closest('.pv-toggle');
     if (tog) {
