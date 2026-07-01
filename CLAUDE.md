@@ -89,8 +89,11 @@ A coluna canônica é `adv_patrimonio_validado` (de `[ADV] Patrimônio validado`
 ### Deduplicação de reuniões
 `filteredReuniones()` deduplica por email (1 reunião por contato) — **exceto quando `tipo_reuniao` difere**: nesse caso a chave de dedup é `email|tipo_reuniao` (normalizado via `normVal()`), então o mesmo contato pode contar mais de uma vez se tiver reuniões de tipos diferentes. Sem a coluna Tipo de Reunião (`TIPO_IN_REUNIOES === false`), o comportamento permanece dedup só por email. Não afeta `emailsTipoRealizadas()` nem `renderReunioes()`, que já derivam direto de `RAW.reunioes` sem passar por esse dedup.
 
-### Filtro Closer/SDR também vale para Leads e Reuniões
-`passGlobal()` (usada por `filteredLeads()` e `filteredReuniones()`) filtra por `SEL.closerResponsavel`/`SEL.sdrResponsavel`, igual a `passGlobalVendas()`/`passGlobalNegociacao()`. Isso significa que leads/reuniões sem esses campos preenchidos (ex: lead que ainda não teve closer atribuído) somem da contagem quando o filtro estiver ativo — comportamento intencional, pedido explicitamente para consertar o Funil e a Tabela Dinâmica (coluna Leads/Marcadas/Realizadas não respeitava o filtro de Closer antes).
+### Filtro Closer/SDR — assimetria intencional entre Leads e Reuniões
+`passGlobal()` (base de `filteredLeads()`/`filteredReuniones()`) **não** filtra por Closer/SDR — esses dois são aplicados separadamente, de forma assimétrica:
+- **SDR filtra desde os Leads**: `filteredLeads()` aplica `SEL.sdrResponsavel` diretamente (SDR já é atribuído na etapa de agendamento).
+- **Closer só filtra a partir de Reuniões**: `passCloserSdrReuniao(row)` (Closer + SDR) é aplicado em `filteredReuniones()`, `renderReunioes()` e `emailsTipoRealizadas()` — nunca em `filteredLeads()`, porque Closer só é atribuído na fase de reunião; filtrar Leads por Closer zeraria a contagem de leads que ainda não passaram por essa etapa.
+- `passGlobalVendas()`/`passGlobalNegociacao()` continuam com os próprios checks de Closer/SDR (Vendas/Negociação sempre têm Closer atribuído).
 
 ### Origem Base vs Origem Suno
 `isOrigemBase(row)` retorna `true` quando `fonte_original_pipe` é `'prospeccao consultor'` (comparação normalizada, sem acentos).

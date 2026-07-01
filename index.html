@@ -1114,14 +1114,15 @@ function passGlobal(row) {
   if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                       return false;
   if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
   if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))  return false;
-  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
-  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))    return false;
   if (SEL.patrimonio.size        > 0 && !SEL.patrimonio.has(row.patrimonio_investido_grupo)) return false;
   return true;
 }
 
+// SDR já é atribuído na etapa de agendamento, por isso filtra desde os Leads.
+// Closer só é atribuído na fase de reunião — nunca filtra Leads (ver passCloserSdrReuniao).
 function filteredLeads() {
-  return RAW.leads.filter(passGlobal);
+  return RAW.leads.filter(r => passGlobal(r) &&
+    (SEL.sdrResponsavel.size === 0 || SEL.sdrResponsavel.has(r.sdr_responsavel)));
 }
 
 // Tipo de Reunião só existe na base de Reuniões — filtra direto aqui (nunca em Leads).
@@ -1130,11 +1131,18 @@ function passTipoReuniao(row) {
   return SEL.tipoReuniao.has((row.tipo_reuniao||'').trim());
 }
 
+// Closer e SDR a partir de Reuniões em diante (Closer não existe na etapa de Lead).
+function passCloserSdrReuniao(row) {
+  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
+  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))       return false;
+  return true;
+}
+
 // Reuniões: filter directly + deduplicate by email (1 per email, exceto quando o
 // Tipo de Reunião difere — nesse caso cada tipo conta como reunião distinta do contato).
 function filteredReuniones() {
   const seen = new Set();
-  return RAW.reunioes.filter(passGlobal).filter(passTipoReuniao).filter(r => {
+  return RAW.reunioes.filter(passGlobal).filter(passTipoReuniao).filter(passCloserSdrReuniao).filter(r => {
     const em = (r.email||'').toLowerCase().trim();
     if (!em) return true; // no email → keep
     const key = TIPO_IN_REUNIOES ? `${em}|${normVal(r.tipo_reuniao)}` : em;
@@ -1152,7 +1160,7 @@ function emailsTipoRealizadas() {
   if (!(TIPO_IN_REUNIOES && SEL.tipoReuniao.size > 0 && SEL.tipoReuniao.size < TIPO_REUNIAO_TOTAL)) return null;
   const s = new Set();
   RAW.reunioes.forEach(r => {
-    if (passGlobal(r) && passTipoReuniao(r) && isRealizada(r)) {
+    if (passGlobal(r) && passTipoReuniao(r) && passCloserSdrReuniao(r) && isRealizada(r)) {
       const em = (r.email||'').toLowerCase().trim();
       if (em) s.add(em);
     }
@@ -2097,7 +2105,7 @@ function renderReunioes() {
 
   // Volume real de atividades: filtros globais + Tipo de Reunião, SEM o dedup-por-contato
   // que filteredReuniones() aplica para a contagem de "reuniões realizadas".
-  const rows = RAW.reunioes.filter(r => passGlobal(r) && passTipoReuniao(r));
+  const rows = RAW.reunioes.filter(r => passGlobal(r) && passTipoReuniao(r) && passCloserSdrReuniao(r));
   if (!rows.length) return;
 
   const parsed = rows.map(r => ({ d: parseDate(r.data_atividade), row: r })).filter(x => x.d);
