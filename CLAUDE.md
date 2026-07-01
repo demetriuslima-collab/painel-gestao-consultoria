@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estrutura do projeto
 
-Arquivo único: `index.html` (~3.015 linhas). Sem build, sem framework, sem backend. **Nunca criar arquivos separados de CSS/JS** — todo o código vive no `index.html`.
+Arquivo único: `index.html` (~2.900 linhas). Sem build, sem framework, sem backend. **Nunca criar arquivos separados de CSS/JS** — todo o código vive no `index.html`.
 
 Há também um job de email diário em `scripts/` (Node.js, independente do painel).
 
@@ -34,33 +34,34 @@ Não abrir `index.html` direto no browser — o PapaParse precisa de servidor HT
 const SHEET_ID = '1nBsorlQR29Ub_KFmr-QW2O2fi1lPKUuBIRvEKC1m8PU';
 ```
 
-Lê **6 abas** via endpoint CSV do Google Sheets: `Leads`, `Reuniões`, `Vendas`, `Meta Captação`, `Meta Leads`, `Negociação`. A planilha precisa estar compartilhada como "qualquer pessoa com o link". O parâmetro `&_t=Date.now()` no `sheetURL` evita cache HTTP do browser.
+Lê **6 abas** via endpoint CSV do Google Sheets: `Leads`, `Reuniões`, `Vendas`, `Meta Captação`, `Meta Leads` (as 5 obrigatórias, carregadas em `Promise.all`) e **`Negociação`** (base do Forecast, carregada de forma **defensiva** com `try/catch` próprio — se a aba não existir, o painel segue sem ela). A planilha precisa estar compartilhada como "qualquer pessoa com o link". O parâmetro `&_t=Date.now()` no `sheetURL` evita cache HTTP do browser.
 
-A aba `Negociação` é carregada separadamente das outras 5 (fora do `Promise.all`), com try/catch próprio em `loadData()`: se ela não existir ou falhar, `RAW.negociacao` fica `[]` e o resto do painel carrega normalmente — só a aba Forecast fica vazia.
+`RAW = { leads, reunioes, vendas, metaCaptacao, metaLeads, negociacao }`.
 
 ## Arquitetura do código (seções do script)
 
-| Linha | Seção |
-|-------|-------|
-| ~683 | AUTH — array `USERS`, `setupLogin()`, `logout()` |
-| ~728 | CONFIG — `SHEET_ID`, `sheetURL`, paletas de cores |
-| ~738 | RUNTIME STATE — `RAW`, `SEL`, `F`, `STATE` |
-| ~790 | UTILITIES — `normalizeKey`, `COL_ALIASES`, `normalizeRow`, `parseDate`, `parseNum`, `parsePatrimonio` |
-| ~996 | DATA LOADING — `fetchSheet`, `loadData` |
-| ~1097 | FILTERING — `filteredLeads`, `filteredReuniones`, `filteredVendas`, `filteredNegociacao` |
-| ~1224 | MULTI-SELECT COMPONENT — `buildAllMS`, `populateAllFilters` |
-| ~1467 | RENDER: FUNIL — cards de métricas + funil visual + **Funil Comparativo** (sub-aba `renderFunilComparativo`, compara meses/semanas pela data de criação) |
-| ~1677 | RENDER: LEADS — tabela + gráfico stacked bar (breakdowns incluindo Patrimônio, toggle Diário/Mensal) |
-| ~1833 | RENDER: VENDAS — Metas Captação/Origem + breakdowns (Source/Funil/Estratégia/Fonte/Closer) + toggle Diário/Mensal |
-| ~2075 | RENDER: REUNIÕES — gráfico de volume por `data_atividade` (dia/semana/mês), empilhado por dimensão |
-| ~2130 | RENDER: COHORT — análise de conversão por mês de entrada |
-| ~2250 | RENDER: FORECAST — projeção por Prioridade sobre a base `Negociação` |
-| ~2348 | RENDER: TABELA DINÂMICA (PIVOT) — `buildPivotTree`, hierarquia de dimensões clicável |
-| ~2527 | CHART HELPERS — `buildDayAxis`, `buildTimeAxis` (dia/semana/mês) |
-| ~2596 | RENDER DISPATCH — `render()` chama a seção ativa |
-| ~2613 | IA CHAT — `buildDataContext`, `renderMarkdown`, `appendChatMsg`, `submitAI`, `clearAIChat` |
-| ~2843 | EVENT BINDINGS — `bindEvents()` |
-| ~2972 | INIT — `init()`, `refreshData()` |
+Números de linha mudam a cada edição — **buscar pelo nome da função**. Ordem no arquivo:
+
+- **AUTH** — `USERS`, `setupLogin()`, `logout()`
+- **CONFIG** — `SHEET_ID`, `sheetURL`, `PALETTE`, `FUNNEL_CLR`
+- **RUNTIME STATE** — `RAW` (6 bases), `SEL` (filtros globais multi-select), `F` (datas), `STATE` (aba ativa, sub-views, toggles de tempo, `forecastFactors`, `forecastEtapa`, `pivotDims/pivotSort/…`)
+- **Flags auto-detectadas** — `DATE_FMT`, `VENDA_DATE_FMT`, `META_DATE_FMT`, `REUNIAO_STATUS_KEY`, `SDR_IN_LEADS`, `SDR_IN_REUNIOES`, `CLOSER_IN_REUNIOES`, `TIPO_IN_REUNIOES`, `TIPO_REUNIAO_TOTAL`
+- **UTILITIES** — `normalizeKey`, `COL_ALIASES`, `normalizeRow`, `parseDate`, `parseNum`, `parsePatrimonio`, `monthKey/monthLabel`
+- **DATA LOADING** — `fetchSheet`, `loadData` (6ª aba `Negociação` defensiva)
+- **DETECÇÃO** — `detectDateFormat` (DATE/VENDA/META), `detectReuniaoStatus`, `detectSdrCloserColumns`
+- **FILTERING** — `passGlobal` (leads/reuniões), `passSdrCloser` (SDR/Closer/Tipo, defensivo), `passGlobalVendas`, `passGlobalNegociacao`, `emailsTipoRealizadas`, `filteredLeads/Reuniones/Vendas/Negociacao`
+- **MULTI-SELECT** — `MS_CFG`, `buildAllMS`, `populateAllFilters`
+- **RENDER DISPATCH** — `render()` → funil / leads / vendas / cohort / reunioes / forecast / pivot / ia
+- **FUNIL** — `renderFunil` (dispatcher Geral/Comparativo), `renderFunilGeral`, `renderFunilComparativo`
+- **DIÁRIA DE LEADS** — `PATRIMONIO_ORDER`, `orderLeadGroups`, `renderLeads/Table/Chart`
+- **DIÁRIA DE VENDAS** — `renderVendas` (dispatcher), `renderVendasCaptacao/Origem/Breakdown`, `renderVendasChart/BreakdownChart`, `VENDAS_BREAKDOWNS`
+- **REUNIÕES** — `renderReunioes` (eixo `data_da_atividade`; dedup por email+tipo)
+- **FORECAST** — `FORECAST_PRIOS`, `prioKey`, `renderForecast/computeAndRenderForecast/renderForecastEtapaChips`
+- **COHORT** — `renderCohort`
+- **CHART HELPERS** — `buildDayAxis`, `buildTimeAxis` (dia/semana/mês), `chartOpts`, `destroyChart`
+- **TABELA DINÂMICA (pivot)** — `PIVOT_DIMS`, `PIVOT_DIM_SEL_KEY`, `PIVOT_SORT_VAL`, `buildPivotTree`, `orderPivotChildren`, `renderPivot/renderPivotArea/renderPivotRows`, `togglePivotDim`
+- **EVENT LISTENERS + INIT** — `bindEvents`, `init`, `refreshData`
+- **IA CHAT** — `buildDataContext`, `renderMarkdown`, `appendChatMsg`, `submitAI`, `clearAIChat`
 
 ## Quirks críticos de dados
 
@@ -68,11 +69,12 @@ A aba `Negociação` é carregada separadamente das outras 5 (fora do `Promise.a
 `normalizeRow()` aplica `normalizeKey()` (lowercase, sem acentos, underscores) em cada chave, depois mapeia para chaves canônicas via `COL_ALIASES`. Ao adicionar suporte a uma nova coluna da planilha, adicionar o alias no objeto `COL_ALIASES`.
 
 ### Detecção de formato de data
-O Google Sheets pode exportar datas em formato americano `M/D/YYYY` para a aba Vendas mesmo quando Leads usa `D/M/YYYY` brasileiro. Por isso há **dois detectores independentes**:
-- `DATE_FMT` — detectado de leads/reuniões
-- `VENDA_DATE_FMT` — detectado especificamente da coluna `data_venda`
+Bases diferentes vêm em formatos diferentes (o Google Sheets exporta MDY em algumas, e as abas de Metas são preenchidas manualmente em DMY). Por isso há **três detectores independentes** (em `detectDateFormat`, heurística: dígito `>12` desambigua):
+- `DATE_FMT` — detectado de leads/reuniões (MDY nesta planilha)
+- `VENDA_DATE_FMT` — específico da coluna `data_venda`
+- `META_DATE_FMT` — específico da coluna `data` das abas de Metas (**DMY**; fallback DMY)
 
-Todo código que usa `data_venda` deve passar `VENDA_DATE_FMT` explicitamente: `parseDate(row.data_venda, VENDA_DATE_FMT)`.
+Sempre passar o formato certo no `parseDate`: `parseDate(row.data_venda, VENDA_DATE_FMT)` e `parseDate(m.data, META_DATE_FMT)`. ⚠️ Esquecer o `META_DATE_FMT` faz as metas caírem no mês errado (bug já corrigido — a linha de meta e a "meta até a data" dependem disso). `data_da_atividade` (Reuniões) vem em `YYYY-MM-DD HH:MM`, sem ambiguidade.
 
 ### Patrimônio validado
 Usar sempre `parsePatrimonio()`, nunca `parseNum()` direto:
@@ -86,14 +88,9 @@ A coluna canônica é `adv_patrimonio_validado` (de `[ADV] Patrimônio validado`
 ### Reuniões realizadas
 `REUNIAO_STATUS_KEY` é detectado automaticamente em `detectReuniaoStatus()` — busca qual coluna da aba Reuniões contém valores como "concluido"/"realizada". Usar sempre `isRealizada(r)`, nunca comparar a coluna diretamente.
 
-### Deduplicação de reuniões
-`filteredReuniones()` deduplica por email (1 reunião por contato) — **exceto quando `tipo_reuniao` difere**: nesse caso a chave de dedup é `email|tipo_reuniao` (normalizado via `normVal()`), então o mesmo contato pode contar mais de uma vez se tiver reuniões de tipos diferentes. Sem a coluna Tipo de Reunião (`TIPO_IN_REUNIOES === false`), o comportamento permanece dedup só por email. Não afeta `emailsTipoRealizadas()` nem `renderReunioes()`, que já derivam direto de `RAW.reunioes` sem passar por esse dedup.
-
-### Filtro Closer/SDR — assimetria intencional entre Leads e Reuniões
-`passGlobal()` (base de `filteredLeads()`/`filteredReuniones()`) **não** filtra por Closer/SDR — esses dois são aplicados separadamente, de forma assimétrica:
-- **SDR filtra desde os Leads**: `filteredLeads()` aplica `SEL.sdrResponsavel` diretamente (SDR já é atribuído na etapa de agendamento).
-- **Closer só filtra a partir de Reuniões**: `passCloserSdrReuniao(row)` (Closer + SDR) é aplicado em `filteredReuniones()`, `renderReunioes()` e `emailsTipoRealizadas()` — nunca em `filteredLeads()`, porque Closer só é atribuído na fase de reunião; filtrar Leads por Closer zeraria a contagem de leads que ainda não passaram por essa etapa.
-- `passGlobalVendas()`/`passGlobalNegociacao()` continuam com os próprios checks de Closer/SDR (Vendas/Negociação sempre têm Closer atribuído).
+### Deduplicação de reuniões (dois modos, intencionais)
+- **Funil / demais views** (`filteredReuniones()`): deduplica por **email** (1 reunião por contato). Consequência: ao filtrar por Tipo de Reunião, um contato com reuniões de tipos diferentes é contado só uma vez (absorvido) — não é bug.
+- **Aba Reuniões** (`renderReunioes`): deduplica por **email + tipo** (conta o mesmo contato de novo quando o tipo de chamada/reunião difere). Não usa `filteredReuniones` (que dedupla só por email).
 
 ### Origem Base vs Origem Suno
 `isOrigemBase(row)` retorna `true` quando `fonte_original_pipe` é `'prospeccao consultor'` (comparação normalizada, sem acentos).
@@ -102,25 +99,28 @@ MGM entra em **Origem Suno** (não é Origem Base).
 ### Aba Vendas tem campo `funil` próprio
 A aba Vendas da planilha possui coluna `funil` diretamente — não fazer join por email com leads para obter o funil. `passGlobalVendas` filtra por `row.funil` e `buildDataContext()` usa `row.funil` no cross-tab mensal. Nunca usar email-join para derivar funil nas vendas; os números ficam incorretos.
 
-### Filtro "Tipo de Reunião" — coluna só existe em Reuniões
-A coluna real é `Tipo de chamada e reunião` (alias canônico `tipo_reuniao`), presente **só na aba Reuniões**. Detecção defensiva via `TIPO_IN_REUNIOES` (algum valor não vazio) e `TIPO_REUNIAO_TOTAL` (nº de tipos distintos).
-- **Leads nunca são filtrados por tipo** (a coluna não existe lá).
-- **Reuniões filtram direto**: `passTipoReuniao(row)`, aplicado dentro de `filteredReuniones()` antes do dedup por e-mail.
-- **Vendas filtram por cruzamento de e-mail**, via `emailsTipoRealizadas()`: pega e-mails de reuniões REALIZADAS do(s) tipo(s) selecionado(s) direto de `RAW.reunioes`, **sem usar `filteredReuniones()`** (o dedup-por-e-mail desse último mantém a primeira linha por contato, que pode não ser a realizada — derivar de `RAW.reunioes` direto evita esse falso-negativo).
-- **"Todos" selecionado ⇒ sem restrição**: a condição é `SEL.tipoReuniao.size > 0 && SEL.tipoReuniao.size < TIPO_REUNIAO_TOTAL`, não só `> 0` — senão selecionar todos os tipos ativaria o cruzamento e mostraria *menos* vendas que com o filtro vazio.
-- `emailsTipoRealizadas()` é reaproveitado por `filteredVendas()` e `filteredNegociacao()` (aba Forecast).
+## Filtros
 
-### Aba Reuniões — gráfico usa volume bruto, sem dedup
-`renderReunioes()` usa `RAW.reunioes.filter(passGlobal).filter(passTipoReuniao)` diretamente, **sem** o dedup-por-e-mail de `filteredReuniones()` — o objetivo é mostrar o volume real de atividades (uma reunião remarcada 3x conta 3x), diferente da contagem "1 por contato" usada no Funil/Diária. Eixo X é `data_atividade` (coluna `Data da atividade`), não `data_criacao`.
+**Globais** (topo, valem em todas as abas) — multi-select via `SEL` + `MS_CFG`: Source, Estratégia, Funil, Patrimônio (`patrimonio_investido_grupo`), Fonte Orig., Canal Orig., Closer, SDR, Tipo de Reunião. Mais o range de data de **criação** (`F.di/F.df` sobre `data_criacao`).
 
-### Patrimônio (faixas) — ordenação fixa, não por contagem
-A coluna `Patrimônio Investido - Grupo` (alias `patrimonio_investido_grupo`) tem valores em **faixas de texto** (ex: `"Entre R$ 300.000 a R$ 1.000.000"`), não números — não dá para ordenar alfabeticamente nem por contagem. A constante `PATRIMONIO_ORDER` fixa a ordem crescente correta; usar `orderLeadGroups()` (tabela/gráfico de Leads) ou `orderPivotChildren()` (Pivot) para essa dimensão, nunca um `.sort()` genérico.
+**Detecção defensiva** (`detectSdrCloserColumns`): filtros de colunas que podem não existir em todas as bases só "ligam" onde a coluna existe (flags `*_IN_*`), sem quebrar antes de a coluna ser adicionada. Regras (via `passSdrCloser` / `passGlobalVendas`):
+- **SDR**: filtra leads + reuniões + vendas.
+- **Closer**: filtra reuniões + vendas, **nunca leads** (regra de negócio — closer só atua da reunião em diante, mesmo que a coluna exista em leads). No Funil, ao filtrar closer os **Leads ficam cheios** e só marcadas/realizadas/vendas caem (intencional).
+- **Tipo de Reunião** (`tipo_reuniao` = coluna "Tipo de chamada e reunião", só em Reuniões): filtra reuniões direto; **vendas por cruzamento de e-mail** (`emailsTipoRealizadas`) — só vendas cujo e-mail bate com reunião REALIZADA do(s) tipo(s). "Todos" selecionado = sem restrição (`size < TIPO_REUNIAO_TOTAL`). E-mails montados de `RAW.reunioes` **sem dedup**.
 
-### Tabela Dinâmica — ordenação por clique no header
-Colunas numéricas do header (`.pv-sort`, `data-sort` = `L`/`LM`/`M`/`MR`/`R`/`RV`/`V`/`LV`) são clicáveis: `STATE.pivotSortCol`/`STATE.pivotSortDir` guardam a coluna/direção ativa, alternando asc/desc a cada clique na mesma coluna (nova coluna sempre começa em `desc`). `orderPivotChildren()` usa o mapa `PIVOT_SORT_COLS` para essa ordenação, mas **preserva a prioridade das ordenações especiais** de `patrimonio_investido_grupo` (faixas fixas) e `__data__` (cronológica) — essas duas dimensões não são reordenáveis por clique. Clique dispara `renderPivot()` completo (não só `renderPivotTable()`) para atualizar a seta ▲/▼ no header.
+**Específicos de aba**: Diária de Vendas → range de data de **venda** (`F.vdi/F.vdf`); Forecast → **Etapa do negócio** (`STATE.forecastEtapa`, chips).
 
-### Aba Forecast — base `Negociação`, sem `data_venda`
-A base `Negociação` é estruturalmente parecida com Vendas mas **sem coluna de contratação** (o negócio ainda não foi fechado) — por isso `filteredNegociacao()`/`passGlobalNegociacao()` usam só `data_criacao`, sem o equivalente a `applyVendaDate`. Os fatores de conversão por Prioridade (`STATE.forecastFactors`, default 60/25/5%) são editáveis via input numérico e recalculam só a projeção (`computeAndRenderForecast()`), sem rebuildar os chips de Etapa do Negócio. O filtro de Etapa (`STATE.forecastEtapa`, chips em `forecast-etapa-chips`) usa `data-idx` apontando para o array `FORECAST_ETAPAS` — **não** embute a string da etapa num atributo `data-*` — para evitar bugs de mismatch de string/encoding entre o que é renderizado e o que é lido no clique.
+## Abas / Views
+
+- **Funil**: sub-abas "Visão Geral" e "Comparativo por Período" (mês/semana por data de criação, tendência ▲/▼).
+- **Diária de Leads**: metas + gráfico stacked; breakdown por Funil/Estratégia/Source/Fonte/Canal/**Patrimônio** (faixas em ordem monetária); toggle Diário/Mensal.
+- **Diária de Vendas**: sub-views Metas Captação / Origem (Suno claro, Base escuro) / breakdowns (Source/Funil/Estratégia/Fonte/Closer); toggle Diário/Mensal.
+- **Reuniões**: volume por `data_da_atividade`; toggle Dia/Semana/Mês; empilhamento por 7 parâmetros; dedup email+tipo.
+- **Cohort (Safra)**: conversão por mês de criação.
+- **Tabela Dinâmica (pivot)**: funil L→M→R→V por parâmetros hierárquicos (drilldown), data mês/semana/dia. Cabeçalho **ordenável por clique** (desc↔asc, `PIVOT_SORT_VAL`). Filtro global restringe a dimensão correspondente (`PIVOT_DIM_SEL_KEY`).
+- **Forecast**: projeção de `RAW.negociacao` — conta clientes e soma patrimônio por **Prioridade** (Alta/Média/Baixa) × **fatores editáveis** (`STATE.forecastFactors`, padrão 60/25/5%). Duas tabelas (qtd e patrimônio) + cards. Prioridade fora do padrão → "(Sem prioridade)" com fator 0.
+
+**Toggles de tempo dos gráficos**: `buildTimeAxis(dates, di, df, mode)` — `'dia'` (cap 180d), `'semana'` (segunda a domingo, cap 53), `'mes'` (cap 24m). Linha de Meta somada por bucket.
 
 ## Email Diário Automático
 
@@ -172,7 +172,7 @@ Clicar no ícone 🔧 no header mostra diagnóstico: formato de data detectado (
 
 ## Autenticação
 
-Credenciais hardcoded em `USERS` (~linha 685). Sessão via `sessionStorage` (chave `suno_dash_auth`). Limitação conhecida e aceita para uso interno.
+Credenciais hardcoded em `USERS` (~linha 416). Sessão via `sessionStorage` (chave `suno_dash_auth`). Limitação conhecida e aceita para uso interno.
 
 ## Design system
 

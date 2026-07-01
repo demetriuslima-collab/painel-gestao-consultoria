@@ -128,7 +128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .funnel-kpi-val{font-size:22px;font-weight:700}
 .funnel-kpi-label{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4}
 
-/* FUNIL COMPARATIVO */
+/* FUNIL COMPARATIVO (apenas na sub-aba Comparativo) */
 .fcomp-scroll{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;align-items:stretch}
 .fcomp-col{flex:0 0 200px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 12px;display:flex;flex-direction:column}
 .fcomp-head{text-align:center;margin-bottom:10px}
@@ -144,11 +144,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fcomp-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);text-align:center}
 .fcomp-conv{font-size:20px;font-weight:700;line-height:1}
 .fcomp-conv-lbl{font-size:10px;color:var(--text-muted);margin-top:2px}
-.fcomp-trend{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;margin-top:6px;padding:4px 8px;border-radius:5px}
-.fcomp-trend.up{background:#E8F5E9;color:var(--success)}
-.fcomp-trend.down{background:#FFEBEE;color:var(--danger)}
-.fcomp-trend.flat{background:#F5F5F5;color:var(--text-muted)}
-.fcomp-legend{margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;font-size:11px;color:var(--text-faint);line-height:1.5}
+.fcomp-trend{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;margin-top:8px;padding:2px 9px;border-radius:20px}
+.fcomp-trend.up{color:var(--success);background:var(--success-bg)}
+.fcomp-trend.down{color:var(--danger);background:var(--danger-bg)}
+.fcomp-trend.flat{color:var(--text-muted);background:#fff;border:1px solid var(--border)}
+.fcomp-legend{font-size:11px;color:var(--text-faint);margin-top:8px;padding:0 2px;line-height:1.5}
 
 /* TABELA DINÂMICA (PIVOT) */
 .pivot-layout{display:flex;gap:18px;align-items:flex-start}
@@ -163,8 +163,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pivot-tbl{width:100%;border-collapse:collapse;font-size:13px}
 .pivot-tbl th{background:var(--bg);padding:9px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
 .pivot-tbl th:first-child{text-align:left}
-.pv-sort{cursor:pointer;user-select:none}
-.pv-sort:hover{color:var(--red)}
 .pivot-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
 .pivot-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
 .pv-dim{color:var(--text)}
@@ -174,6 +172,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pv-conv{font-weight:700;color:var(--red)}
 .pv-row:hover td{background:#FAFAFA}
 .pv-total td{font-weight:700;background:var(--bg);border-bottom:2px solid var(--border)}
+.pv-sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.pv-sortable:hover{color:var(--red)}
+.pivot-tbl th.pv-sorted{color:var(--red)}
 
 /* FORECAST */
 .forecast-factors{display:flex;gap:24px;flex-wrap:wrap}
@@ -322,7 +323,7 @@ tr:hover td{background:#FAFAFA}
       <span class="nav-icon">$</span> Diária de Vendas
     </button>
     <button class="tab-btn" data-tab="reunioes">
-      <span class="nav-icon">☎</span> Reuniões
+      <span class="nav-icon">◷</span> Reuniões
     </button>
     <button class="tab-btn" data-tab="cohort">
       <span class="nav-icon">⊞</span> Cohort (Safra)
@@ -372,6 +373,10 @@ tr:hover td{background:#FAFAFA}
         <div class="multi-select" id="ms-funil"></div>
       </div>
       <div class="filter-group">
+        <label class="filter-label">Patrimônio</label>
+        <div class="multi-select" id="ms-patrimonio"></div>
+      </div>
+      <div class="filter-group">
         <label class="filter-label">Fonte Original — Pipe</label>
         <div class="multi-select" id="ms-fonte"></div>
       </div>
@@ -388,12 +393,16 @@ tr:hover td{background:#FAFAFA}
         <div class="multi-select" id="ms-sdr"></div>
       </div>
       <div class="filter-group">
-        <label class="filter-label">Patrimônio</label>
-        <div class="multi-select" id="ms-patrimonio"></div>
-      </div>
-      <div class="filter-group">
         <label class="filter-label">Tipo de Reunião</label>
         <div class="multi-select" id="ms-tiporeuniao"></div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Contar reuniões por</label>
+        <div class="toggle-group" id="reuniao-count-toggle">
+          <button class="toggle-btn active" data-countmode="negocio">Negócio</button>
+          <button class="toggle-btn" data-countmode="email">Contato</button>
+          <button class="toggle-btn" data-countmode="emailtipo">Email+Tipo</button>
+        </div>
       </div>
       <button class="btn-clear" onclick="clearFilters()">✕ Limpar</button>
     </div>
@@ -510,9 +519,9 @@ tr:hover td{background:#FAFAFA}
       <div class="card-head">
         <div>
           <div class="card-title" id="vendas-card-title">Metas de Captação</div>
-          <div class="card-sub">Metas inativas — serão ativadas na próxima fase</div>
+          <div class="card-sub" id="vendas-card-sub">Metas inativas — serão ativadas na próxima fase</div>
         </div>
-        <div class="toggle-group" id="vendas-toggle" style="flex-wrap:wrap">
+        <div class="toggle-group" id="vendas-toggle">
           <button class="toggle-btn active" data-subview="captacao">Metas Captação</button>
           <button class="toggle-btn" data-subview="origem">Origem</button>
           <button class="toggle-btn" data-subview="deal_utm_source">Source</button>
@@ -536,32 +545,6 @@ tr:hover td{background:#FAFAFA}
     </div>
   </section>
 
-  <section class="view" id="view-reunioes">
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-title" id="reunioes-chart-title">Volume de Reuniões</div>
-          <div class="card-sub">Por data da atividade · empilhado pelo parâmetro selecionado</div>
-        </div>
-        <div class="toggle-group" id="reunioes-time-toggle">
-          <button class="toggle-btn" data-timemode="dia">Diário</button>
-          <button class="toggle-btn" data-timemode="semana">Semanal</button>
-          <button class="toggle-btn active" data-timemode="mes">Mensal</button>
-        </div>
-      </div>
-      <div class="toggle-group" id="reunioes-breakdown-toggle" style="flex-wrap:wrap;margin-bottom:16px">
-        <button class="toggle-btn active" data-breakdown="tipo_reuniao">Tipo de Reunião</button>
-        <button class="toggle-btn" data-breakdown="deal_utm_source">Source</button>
-        <button class="toggle-btn" data-breakdown="funil">Funil</button>
-        <button class="toggle-btn" data-breakdown="estrategia">Estratégia</button>
-        <button class="toggle-btn" data-breakdown="fonte_original_pipe">Fonte Orig.</button>
-        <button class="toggle-btn" data-breakdown="closer_responsavel">Closer</button>
-        <button class="toggle-btn" data-breakdown="sdr_responsavel">SDR</button>
-      </div>
-      <div class="chart-box"><canvas id="reunioes-chart"></canvas></div>
-    </div>
-  </section>
-
   <section class="view" id="view-cohort">
     <div class="card">
       <div class="card-head">
@@ -576,6 +559,53 @@ tr:hover td{background:#FAFAFA}
           <tbody id="cohort-body"></tbody>
         </table>
       </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-reunioes">
+    <div class="view-filter-bar">
+      <div class="date-presets">
+        <span class="date-presets-label">Data da Atividade — Atalhos</span>
+        <div class="date-presets-btns">
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('ontem')">Ontem</button>
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('7dias')">Últ. 7 dias</button>
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('mes')">Mês atual</button>
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('mespassado')">Mês passado</button>
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('30dias')">Últ. 30 dias</button>
+          <button class="preset-btn" onclick="applyReuniaoDatePreset('3meses')">Últ. 3 meses</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Data Atividade — De</label>
+        <input type="date" class="filter-input" id="f-rai">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Até</label>
+        <input type="date" class="filter-input" id="f-raf">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="reunioes-chart-title">Volume de Reuniões</div>
+          <div class="card-sub">Por data da atividade · empilhado pelo parâmetro selecionado</div>
+        </div>
+        <div class="toggle-group" id="reunioes-time-toggle">
+          <button class="toggle-btn" data-rtimemode="dia">Diário</button>
+          <button class="toggle-btn" data-rtimemode="semana">Semanal</button>
+          <button class="toggle-btn active" data-rtimemode="mes">Mensal</button>
+        </div>
+      </div>
+      <div class="toggle-group" id="reunioes-breakdown-toggle" style="margin-bottom:16px;flex-wrap:wrap">
+        <button class="toggle-btn active" data-rbreakdown="tipo_reuniao">Tipo de Reunião</button>
+        <button class="toggle-btn" data-rbreakdown="deal_utm_source">Source</button>
+        <button class="toggle-btn" data-rbreakdown="funil">Funil</button>
+        <button class="toggle-btn" data-rbreakdown="estrategia">Estratégia</button>
+        <button class="toggle-btn" data-rbreakdown="fonte_original_pipe">Fonte Orig.</button>
+        <button class="toggle-btn" data-rbreakdown="closer_responsavel">Closer</button>
+        <button class="toggle-btn" data-rbreakdown="sdr_responsavel">SDR</button>
+      </div>
+      <div class="chart-box"><canvas id="reunioes-chart"></canvas></div>
     </div>
   </section>
 
@@ -616,40 +646,21 @@ tr:hover td{background:#FAFAFA}
         </div>
       </div>
       <div class="forecast-factors">
-        <label class="ff-item">
-          <span class="ff-lbl">Prioridade Alta</span>
-          <span class="ff-input"><input type="number" id="f-fac-alta" min="0" max="100" step="1" value="60"><span>%</span></span>
-        </label>
-        <label class="ff-item">
-          <span class="ff-lbl">Prioridade Média</span>
-          <span class="ff-input"><input type="number" id="f-fac-media" min="0" max="100" step="1" value="25"><span>%</span></span>
-        </label>
-        <label class="ff-item">
-          <span class="ff-lbl">Prioridade Baixa</span>
-          <span class="ff-input"><input type="number" id="f-fac-baixa" min="0" max="100" step="1" value="5"><span>%</span></span>
-        </label>
+        <label class="ff-item"><span class="ff-lbl">Prioridade Alta</span><span class="ff-input"><input type="number" id="f-fac-alta" min="0" max="100" step="1" value="60"><span>%</span></span></label>
+        <label class="ff-item"><span class="ff-lbl">Prioridade Média</span><span class="ff-input"><input type="number" id="f-fac-media" min="0" max="100" step="1" value="25"><span>%</span></span></label>
+        <label class="ff-item"><span class="ff-lbl">Prioridade Baixa</span><span class="ff-input"><input type="number" id="f-fac-baixa" min="0" max="100" step="1" value="5"><span>%</span></span></label>
       </div>
     </div>
 
     <div class="metrics-row" id="forecast-summary"></div>
 
     <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-title">Projeção por Quantidade de Clientes</div>
-          <div class="card-sub">Clientes na base × taxa de conversão da prioridade</div>
-        </div>
-      </div>
+      <div class="card-head"><div><div class="card-title">Projeção por Quantidade de Clientes</div><div class="card-sub">Clientes na base × taxa de conversão da prioridade</div></div></div>
       <div class="tbl-wrap" id="forecast-tbl-qtd"></div>
     </div>
 
     <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-title">Projeção por Patrimônio Validado</div>
-          <div class="card-sub">Soma do patrimônio validado em cada prioridade × taxa de conversão</div>
-        </div>
-      </div>
+      <div class="card-head"><div><div class="card-title">Projeção por Patrimônio Validado</div><div class="card-sub">Soma do patrimônio validado em cada prioridade × taxa de conversão</div></div></div>
       <div class="tbl-wrap" id="forecast-tbl-pat"></div>
     </div>
   </section>
@@ -746,38 +757,39 @@ const SEL = {
   source:            new Set(),
   estrategia:        new Set(),
   funil:             new Set(),
+  patrimonio:        new Set(),
   fonteOriginalPipe: new Set(),
   canalOriginador:   new Set(),
   closerResponsavel: new Set(),
   sdrResponsavel:    new Set(),
-  patrimonio:        new Set(),
   tipoReuniao:       new Set(),
 };
 
 const F = {   // active filter values
   di: null, df: null,   // data_criacao range
   vdi: null, vdf: null, // data_venda range (vendas view only)
+  rai: null, raf: null, // data_da_atividade range (aba Reuniões only)
 };
 
 const STATE = {
   activeTab:      'funil',
   funilView:      'geral',      // 'geral' | 'comparativo'
-  funilCompMode:  'mes',        // 'mes' | 'semana' — agrupamento do funil comparativo
+  funilCompMode:  'mes',        // 'mes' | 'semana' — agrupamento do comparativo
   leadsBreakdown: 'funil',
   leadsTimeMode:  'dia',        // 'dia' | 'mes' — agrupamento do gráfico de leads
   vendasSubview:  'captacao',
   vendasTimeMode: 'dia',        // 'dia' | 'mes' — agrupamento do gráfico de vendas
+  reunioesBreakdown: 'tipo_reuniao', // empilhamento do gráfico de reuniões
+  reunioesTimeMode:  'mes',          // 'dia' | 'semana' | 'mes'
+  reuniaoCountMode:  'negocio',      // 'negocio' | 'email' | 'emailtipo' — como contar reuniões (funil/pivot/aba)
+  forecastFactors: { alta:60, media:25, baixa:5 }, // taxas de conversão (%) editáveis do Forecast
+  forecastEtapa:   new Set(),        // filtro específico do Forecast: Etapa do negócio
   pivotDims:      [],           // ordem dos parâmetros nas linhas (hierarquia)
   pivotDateGran:  'mes',        // 'mes' | 'semana' | 'dia' — granularidade quando Data é parâmetro
   pivotExpanded:  new Set(),    // caminhos expandidos na árvore
   pivotTree:      null,         // cache da árvore construída
-  pivotPaths:     [],           // índice pid → caminho (para o handler de clique de expansão)
-  pivotSortCol:   'L',           // coluna ativa de ordenação (ver PIVOT_SORT_COLS)
-  pivotSortDir:   'desc',        // 'asc' | 'desc'
-  reunioesBreakdown: 'tipo_reuniao', // empilhamento do gráfico de reuniões
-  reunioesTimeMode:  'mes',          // 'dia' | 'semana' | 'mes'
-  forecastFactors: { alta:60, media:25, baixa:5 }, // taxas (%) editáveis de conversão projetada
-  forecastEtapa:   new Set(),                      // filtro de Etapa do Negócio (só na aba Forecast)
+  pivotPaths:     [],           // mapeia pid → caminho (para expandir/recolher)
+  pivotSort:      { col:null, dir:'desc' }, // ordenação por clique no cabeçalho da pivot
   charts:         {},
 };
 
@@ -787,8 +799,13 @@ const AI_CHAT = []; // histórico: [{role:'user'|'assistant', content:'...'}]
 let REUNIAO_STATUS_KEY = null; // column name that holds "concluido"
 let DATE_FMT = null;           // 'MDY' or 'DMY' — detected from leads/reunioes
 let VENDA_DATE_FMT = null;     // 'MDY' or 'DMY' — detected specifically from vendas
-let TIPO_IN_REUNIOES = false;  // Tipo de Reunião presente na base de reuniões (vendas usam cruzamento por e-mail)
-let TIPO_REUNIAO_TOTAL = 0;    // nº de tipos distintos (tratar "Todos selecionados" como sem restrição)
+let META_DATE_FMT  = null;     // 'MDY' or 'DMY' — detectado das abas de Metas (costumam ser DMY/BR)
+// Detecção defensiva das colunas SDR/Closer (Fase 3): só filtram a base onde a coluna existir.
+let SDR_IN_LEADS = false;        // SDR presente na base de leads
+let SDR_IN_REUNIOES = false;     // SDR presente na base de reuniões
+let CLOSER_IN_REUNIOES = false;  // Closer presente na base de reuniões (Closer nunca filtra leads)
+let TIPO_IN_REUNIOES = false;    // Tipo de reunião presente em reuniões (vendas usam cruzamento por e-mail)
+let TIPO_REUNIAO_TOTAL = 0;      // nº de tipos distintos (tratar "Todos selecionados" como sem restrição)
 
 // ================================================================
 // UTILITIES
@@ -821,11 +838,7 @@ const COL_ALIASES = {
   consultor:           ['consultor','consultor_responsavel'],
   closer_responsavel:  ['adv_aut_closer_responsavel','closer_responsavel','closer'],
   sdr_responsavel:     ['adv_aut_sdr_responsavel','sdr_responsavel','sdr'],
-  patrimonio_investido_grupo: ['patrimonio_investido_grupo','patrimonio_investido','faixa_patrimonio'],
   tipo_reuniao:        ['tipo_de_chamada_e_reuniao','tipo_reuniao','tipo_de_reuniao','tipo_da_reuniao'],
-  data_atividade:      ['data_da_atividade','data_atividade'],
-  prioridade:          ['prioridade'],
-  etapa_negocio:       ['etapa_do_negocio','etapa_negocio'],
 };
 
 // Build reverse lookup once: normalizedRealKey → canonicalKey
@@ -916,6 +929,18 @@ function detectDateFormat() {
     if (VENDA_DATE_FMT) break;
   }
   if (!VENDA_DATE_FMT) VENDA_DATE_FMT = DATE_FMT; // fallback to global
+
+  // Metas (Meta Leads / Meta Captação) costumam ser preenchidas em DMY (BR),
+  // mesmo quando leads/vendas vêm em MDY do Google Sheets. Detecta na coluna `data`.
+  for (const row of [...RAW.metaLeads, ...RAW.metaCaptacao]) {
+    const s = (row.data||'').trim().replace(/\s+\d{1,2}:\d{2}.*$/,'').trim();
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) continue;
+    const a = +m[1], b = +m[2];
+    if (a > 12) { META_DATE_FMT = 'DMY'; break; }
+    if (b > 12) { META_DATE_FMT = 'MDY'; break; }
+  }
+  if (!META_DATE_FMT) META_DATE_FMT = 'DMY'; // fallback: Brazilian (metas preenchidas manualmente)
 }
 
 // Normalize value for comparison: lowercase + remove accents
@@ -937,15 +962,19 @@ function detectReuniaoStatus() {
   }
 }
 
+// Detecção defensiva (Fase 3): a coluna "existe" se houver ao menos um valor não-vazio.
+function detectSdrCloserColumns() {
+  const has = (rows, field) => rows.some(r => (r[field]||'').trim() !== '');
+  SDR_IN_LEADS       = has(RAW.leads,    'sdr_responsavel');
+  SDR_IN_REUNIOES    = has(RAW.reunioes, 'sdr_responsavel');
+  CLOSER_IN_REUNIOES = has(RAW.reunioes, 'closer_responsavel');
+  TIPO_IN_REUNIOES   = has(RAW.reunioes, 'tipo_reuniao');
+  TIPO_REUNIAO_TOTAL = new Set(RAW.reunioes.map(r => r.tipo_reuniao).filter(v => v !== undefined)).size;
+}
+
 function isRealizada(r) {
   if (REUNIAO_STATUS_KEY) return REALIZADA_VALUES.includes(normVal(r[REUNIAO_STATUS_KEY]));
   return REALIZADA_VALUES.includes(normVal(r.status_reuniao));
-}
-
-// Detecção defensiva: a coluna Tipo de Reunião só existe na base de Reuniões.
-function detectTipoReuniao() {
-  TIPO_IN_REUNIOES   = RAW.reunioes.some(r => (r.tipo_reuniao||'').trim() !== '');
-  TIPO_REUNIAO_TOTAL = new Set(RAW.reunioes.map(r => (r.tipo_reuniao||'').trim()).filter(Boolean)).size;
 }
 
 function isOrigemBase(row) {
@@ -1024,7 +1053,7 @@ async function loadData() {
     RAW.vendas        = vendas;
     RAW.metaCaptacao  = metaCaptacao;
     RAW.metaLeads     = metaLeads;
-    // Base "Negociação" alimenta a aba Forecast — opcional: se a aba não existir/falhar, não bloqueia o resto do painel.
+    // Base Negociação (aba Forecast) — defensiva: se a aba não existir, segue sem ela.
     try { RAW.negociacao = await fetchSheet('Negociação'); }
     catch(e) { RAW.negociacao = []; console.warn('Base Negociação não carregada:', e); }
     setStatus('ok', `${leads.length} leads · ${reunioes.length} reuniões · ${vendas.length} vendas`);
@@ -1118,54 +1147,45 @@ function passGlobal(row) {
   return true;
 }
 
-// SDR já é atribuído na etapa de agendamento, por isso filtra desde os Leads.
-// Closer só é atribuído na fase de reunião — nunca filtra Leads (ver passCloserSdrReuniao).
-function filteredLeads() {
-  return RAW.leads.filter(r => passGlobal(r) &&
-    (SEL.sdrResponsavel.size === 0 || SEL.sdrResponsavel.has(r.sdr_responsavel)));
-}
-
-// Tipo de Reunião só existe na base de Reuniões — filtra direto aqui (nunca em Leads).
-function passTipoReuniao(row) {
-  if (!TIPO_IN_REUNIOES || SEL.tipoReuniao.size === 0) return true;
-  return SEL.tipoReuniao.has((row.tipo_reuniao||'').trim());
-}
-
-// Closer e SDR a partir de Reuniões em diante (Closer não existe na etapa de Lead).
-function passCloserSdrReuniao(row) {
-  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
-  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))       return false;
+// Filtro defensivo SDR/Closer/Tipo de Reunião: só aplica onde a coluna existir.
+// SDR filtra desde leads; Closer e Tipo de Reunião só a partir de reuniões (nunca leads).
+function passSdrCloser(row, hasSdr, hasCloser, hasTipo) {
+  if (hasSdr    && SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))       return false;
+  if (hasCloser && SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
+  if (hasTipo   && SEL.tipoReuniao.size       > 0 && !SEL.tipoReuniao.has(row.tipo_reuniao))             return false;
   return true;
 }
 
-// Reuniões: filter directly + deduplicate by email (1 per email, exceto quando o
-// Tipo de Reunião difere — nesse caso cada tipo conta como reunião distinta do contato).
-function filteredReuniones() {
-  const seen = new Set();
-  return RAW.reunioes.filter(passGlobal).filter(passTipoReuniao).filter(passCloserSdrReuniao).filter(r => {
-    const em = (r.email||'').toLowerCase().trim();
-    if (!em) return true; // no email → keep
-    const key = TIPO_IN_REUNIOES ? `${em}|${normVal(r.tipo_reuniao)}` : em;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function filteredLeads() {
+  return RAW.leads.filter(r => passGlobal(r) && passSdrCloser(r, SDR_IN_LEADS, false, false));
 }
 
-// E-mails de reuniões REALIZADAS do(s) tipo(s) selecionado(s) — direto de RAW.reunioes, SEM o
-// dedup-por-e-mail de filteredReuniones() (esse dedup é só para a contagem "1 por contato" e
-// poderia descartar justamente a reunião realizada, se uma não-realizada do mesmo contato vier antes).
-// Retorna null quando o filtro está inativo OU com "Todos" selecionado (= sem restrição).
-function emailsTipoRealizadas() {
-  if (!(TIPO_IN_REUNIOES && SEL.tipoReuniao.size > 0 && SEL.tipoReuniao.size < TIPO_REUNIAO_TOTAL)) return null;
-  const s = new Set();
-  RAW.reunioes.forEach(r => {
-    if (passGlobal(r) && passTipoReuniao(r) && passCloserSdrReuniao(r) && isRealizada(r)) {
-      const em = (r.email||'').toLowerCase().trim();
-      if (em) s.add(em);
-    }
+// Reuniões: filter directly + deduplicate by email (1 per email)
+// Dedup de reuniões conforme o modo escolhido no dashboard (STATE.reuniaoCountMode):
+//   'negocio'   = 1 por negocio_id (deal)
+//   'email'     = 1 por contato (email)
+//   'emailtipo' = 1 por contato + tipo de reunião
+// Sempre prefere manter uma reunião REALIZADA quando houver, para a contagem de realizadas
+// (filter isRealizada sobre o resultado) ficar correta sem depender da ordem das linhas.
+function dedupReunioes(rows) {
+  const mode = STATE.reuniaoCountMode;
+  const keyOf = r => {
+    if (mode === 'email')     { const e=(r.email||'').toLowerCase().trim(); return e || null; }
+    if (mode === 'emailtipo') { const e=(r.email||'').toLowerCase().trim(); return e ? e+'||'+(r.tipo_reuniao||'').trim() : null; }
+    const n=(r.negocio_id||'').trim(); return n || null; // 'negocio'
+  };
+  const byKey = new Map(); const semKey = [];
+  rows.forEach(r => {
+    const k = keyOf(r);
+    if (k === null) { semKey.push(r); return; } // sem chave → mantém individualmente
+    const cur = byKey.get(k);
+    if (!cur || (!isRealizada(cur) && isRealizada(r))) byKey.set(k, r);
   });
-  return s;
+  return [...byKey.values(), ...semKey];
+}
+
+function filteredReuniones() {
+  return dedupReunioes(RAW.reunioes.filter(r => passGlobal(r) && passSdrCloser(r, SDR_IN_REUNIOES, CLOSER_IN_REUNIOES, TIPO_IN_REUNIOES)));
 }
 
 // Vendas: global filter + optional venda-date filter.
@@ -1183,17 +1203,31 @@ function passGlobalVendas(row) {
   if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                       return false;
   if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
   if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))  return false;
+  if (SEL.patrimonio.size        > 0 && !SEL.patrimonio.has(row.patrimonio_investido_grupo)) return false;
   if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
   if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))    return false;
-  if (SEL.patrimonio.size        > 0 && !SEL.patrimonio.has(row.patrimonio_investido_grupo)) return false;
   return true;
+}
+
+// Conjunto de e-mails de reuniões REALIZADAS do(s) tipo(s) selecionado(s) — SEM dedup.
+// Retorna null quando o filtro de Tipo está inativo OU "Todos" selecionado (= sem restrição).
+function emailsTipoRealizadas() {
+  if (!(TIPO_IN_REUNIOES && SEL.tipoReuniao.size > 0 && SEL.tipoReuniao.size < TIPO_REUNIAO_TOTAL)) return null;
+  const s = new Set();
+  RAW.reunioes.forEach(r => {
+    if (passGlobal(r) && passSdrCloser(r, SDR_IN_REUNIOES, CLOSER_IN_REUNIOES, TIPO_IN_REUNIOES) && isRealizada(r)) {
+      const em = (r.email || '').toLowerCase().trim();
+      if (em) s.add(em);
+    }
+  });
+  return s;
 }
 
 function filteredVendas(applyVendaDate = false) {
   let rows = RAW.vendas.filter(passGlobalVendas);
-  // Tipo de Reunião: vendas não têm a coluna → cruzamento por e-mail com reuniões realizadas do tipo.
+  // Filtro de Tipo de Reunião: vendas não têm a coluna → cruzamento por e-mail (helper compartilhado).
   const emailsTipo = emailsTipoRealizadas();
-  if (emailsTipo) rows = rows.filter(v => emailsTipo.has((v.email||'').toLowerCase().trim()));
+  if (emailsTipo) rows = rows.filter(v => emailsTipo.has((v.email || '').toLowerCase().trim()));
   if (applyVendaDate && (F.vdi || F.vdf)) {
     rows = rows.filter(r => {
       const d = parseDate(r.data_venda, VENDA_DATE_FMT);
@@ -1206,8 +1240,7 @@ function filteredVendas(applyVendaDate = false) {
   return rows;
 }
 
-// Negociação (base da aba Forecast): mesmos filtros globais de data_criacao + multi-selects.
-// Não tem "data de contratação" nem a coluna Tipo de Reunião (cruzamento por e-mail, igual Vendas).
+// Base Negociação (Forecast): mesmos filtros globais que vendas (data por data_criacao, sem data_venda).
 function passGlobalNegociacao(row) {
   if (F.di || F.df) {
     const d = parseDate(row.data_criacao);
@@ -1215,23 +1248,24 @@ function passGlobalNegociacao(row) {
     if (F.di && d < F.di) return false;
     if (F.df && d > F.df) return false;
   }
-  if (SEL.source.size            > 0 && !SEL.source.has(row.deal_utm_source))            return false;
-  if (SEL.estrategia.size        > 0 && !SEL.estrategia.has(row.estrategia))             return false;
-  if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                       return false;
-  if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
-  if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))  return false;
-  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel)) return false;
-  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))    return false;
+  if (SEL.source.size            > 0 && !SEL.source.has(row.deal_utm_source))               return false;
+  if (SEL.estrategia.size        > 0 && !SEL.estrategia.has(row.estrategia))                 return false;
+  if (SEL.funil.size             > 0 && !SEL.funil.has(row.funil))                           return false;
   if (SEL.patrimonio.size        > 0 && !SEL.patrimonio.has(row.patrimonio_investido_grupo)) return false;
+  if (SEL.fonteOriginalPipe.size > 0 && !SEL.fonteOriginalPipe.has(row.fonte_original_pipe)) return false;
+  if (SEL.canalOriginador.size   > 0 && !SEL.canalOriginador.has(row.canal_originador))      return false;
+  if (SEL.closerResponsavel.size > 0 && !SEL.closerResponsavel.has(row.closer_responsavel))  return false;
+  if (SEL.sdrResponsavel.size    > 0 && !SEL.sdrResponsavel.has(row.sdr_responsavel))         return false;
   return true;
 }
 
+// Negociações filtradas: filtros globais + cruzamento de Tipo de Reunião (por e-mail) + filtro de Etapa do negócio.
 function filteredNegociacao() {
   let rows = RAW.negociacao.filter(passGlobalNegociacao);
   const emailsTipo = emailsTipoRealizadas();
-  if (emailsTipo) rows = rows.filter(r => emailsTipo.has((r.email||'').toLowerCase().trim()));
+  if (emailsTipo) rows = rows.filter(v => emailsTipo.has((v.email || '').toLowerCase().trim()));
   if (STATE.forecastEtapa.size > 0) {
-    rows = rows.filter(r => STATE.forecastEtapa.has((r.etapa_negocio||'').trim() || '(Vazio)'));
+    rows = rows.filter(r => STATE.forecastEtapa.has((r.etapa_do_negocio || '').trim() || '(Vazio)'));
   }
   return rows;
 }
@@ -1243,11 +1277,11 @@ const MS_CFG = {
   source:            { el: 'ms-source',     field: 'deal_utm_source' },
   estrategia:        { el: 'ms-estrategia', field: 'estrategia' },
   funil:             { el: 'ms-funil',      field: 'funil' },
+  patrimonio:        { el: 'ms-patrimonio', field: 'patrimonio_investido_grupo' },
   fonteOriginalPipe: { el: 'ms-fonte',      field: 'fonte_original_pipe' },
   canalOriginador:   { el: 'ms-canal',      field: 'canal_originador' },
   closerResponsavel: { el: 'ms-closer',     field: 'closer_responsavel' },
   sdrResponsavel:    { el: 'ms-sdr',        field: 'sdr_responsavel' },
-  patrimonio:        { el: 'ms-patrimonio', field: 'patrimonio_investido_grupo' },
   tipoReuniao:       { el: 'ms-tiporeuniao', field: 'tipo_reuniao' },
 };
 
@@ -1361,7 +1395,7 @@ function calcMetaCaptacao() {
 
   let metaMes=0, metaAteData=0, metaQtdMes=0, metaQtdAteData=0;
   RAW.metaCaptacao.forEach(m => {
-    const d = parseDate(m.data);
+    const d = parseDate(m.data, META_DATE_FMT);
     if (!d) return;
     const cap = parseNum(m.meta_de_captacao);
     const qtd = parseNum(m.meta_de_quantidade);
@@ -1388,7 +1422,7 @@ function calcMetaLeads() {
   const funisCols = ['meta_aplicacao','meta_sessao_estrategica','meta_sessao_lmfrios'];
 
   RAW.metaLeads.forEach(m => {
-    const d = parseDate(m.data);
+    const d = parseDate(m.data, META_DATE_FMT);
     if (!d || d < mesStart || d > mesEnd) return;
     r.metaMes += parseNum(m.meta_total_de_leads);
     if (d <= ontem) r.metaAteData += parseNum(m.meta_total_de_leads);
@@ -1450,8 +1484,8 @@ function applyDatePreset(preset, isVenda = false) {
     F.vdf = new Date(df.getTime()); F.vdf.setHours(23, 59, 59);
     document.getElementById('f-vdi').value = toInput(di);
     document.getElementById('f-vdf').value = toInput(df);
-    // Mark active button
-    document.querySelectorAll('.view-filter-bar .preset-btn').forEach(b =>
+    // Mark active button (escopado ao view de vendas p/ não afetar Reuniões/Forecast)
+    document.querySelectorAll('#view-vendas .preset-btn').forEach(b =>
       b.classList.toggle('active', b.getAttribute('onclick') === `applyDatePreset('${preset}', true)`));
     if (STATE.activeTab === 'vendas') render();
   } else {
@@ -1464,6 +1498,26 @@ function applyDatePreset(preset, isVenda = false) {
       b.classList.toggle('active', b.getAttribute('onclick') === `applyDatePreset('${preset}')`));
     render();
   }
+}
+
+// Preset de data da atividade — exclusivo da aba Reuniões (espelha o de vendas)
+function applyReuniaoDatePreset(preset) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let di, df;
+  if (preset === 'ontem')          { di = new Date(today); di.setDate(di.getDate() - 1); df = new Date(di); }
+  else if (preset === '7dias')     { di = new Date(today); di.setDate(di.getDate() - 6); df = new Date(today); }
+  else if (preset === 'mes')       { di = new Date(today.getFullYear(), today.getMonth(), 1); df = new Date(today); }
+  else if (preset === 'mespassado'){ di = new Date(today.getFullYear(), today.getMonth() - 1, 1); df = new Date(today.getFullYear(), today.getMonth(), 0); }
+  else if (preset === '30dias')    { di = new Date(today); di.setDate(di.getDate() - 29); df = new Date(today); }
+  else if (preset === '3meses')    { di = new Date(today.getFullYear(), today.getMonth() - 3, 1); df = new Date(today.getFullYear(), today.getMonth(), 0); }
+  const toInput = d => d.toISOString().slice(0, 10);
+  F.rai = new Date(di.getTime());
+  F.raf = new Date(df.getTime()); F.raf.setHours(23, 59, 59);
+  document.getElementById('f-rai').value = toInput(di);
+  document.getElementById('f-raf').value = toInput(df);
+  document.querySelectorAll('#view-reunioes .preset-btn').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('onclick') === `applyReuniaoDatePreset('${preset}')`));
+  if (STATE.activeTab === 'reunioes') render();
 }
 
 function clearFilters() {
@@ -1480,7 +1534,7 @@ function clearFilters() {
 }
 
 // ================================================================
-// RENDER: FUNIL
+// RENDER: FUNIL (dispatcher entre Visão Geral e Comparativo)
 // ================================================================
 function renderFunil() {
   const geral = STATE.funilView === 'geral';
@@ -1565,13 +1619,17 @@ function renderFunilGeral() {
   vis.appendChild(wrap);
 }
 
-// Chave/rótulo de período para o Funil Comparativo ('mes' ou 'semana', semana iniciando na segunda-feira).
+// ================================================================
+// RENDER: FUNIL COMPARATIVO (por mês ou semana, pela data de criação)
+// ================================================================
 function funilPeriodKey(d, mode) {
-  if (mode === 'mes') return monthKey(d);
-  const dow    = (d.getDay() + 6) % 7; // 0=segunda ... 6=domingo
+  if (mode === 'mes') return monthKey(d);            // 'YYYY-MM'
+  // semana iniciando na segunda-feira
+  const dow    = (d.getDay() + 6) % 7;               // 0=segunda ... 6=domingo
   const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow);
   return `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
 }
+
 function funilPeriodLabel(key, mode) {
   if (mode === 'mes') return monthLabel(key);
   const [y,m,da] = key.split('-').map(Number);
@@ -1584,9 +1642,10 @@ function renderFunilComparativo() {
   const mode = STATE.funilCompMode;
   const area = document.getElementById('funil-comp-area');
 
-  // Reaproveita exatamente os mesmos conjuntos filtrados da Visão Geral.
+  // Reaproveita exatamente os mesmos conjuntos filtrados da Visão Geral —
+  // garante que a soma dos períodos bata com o funil geral do mesmo intervalo.
   const leads      = filteredLeads();
-  const reunioes    = filteredReuniones();
+  const reunioes   = filteredReuniones();
   const realizadas = reunioes.filter(isRealizada);
   const vendas     = filteredVendas(false);
 
@@ -1692,14 +1751,7 @@ function renderFunilComparativo() {
 // ================================================================
 // RENDER: LEADS
 // ================================================================
-function renderLeads() {
-  const leads = filteredLeads();
-  renderLeadsTable(leads);
-  renderLeadsChart(leads);
-}
-
-// Faixas de patrimônio (coluna "Patrimônio Investido - Grupo") em ordem crescente — são strings,
-// não ordenam certo nem alfabeticamente nem por contagem.
+// Ordem monetária das faixas da coluna "Patrimônio Investido - Grupo"
 const PATRIMONIO_ORDER = [
   'De 0 a R$ 50.000',
   'Entre R$ 50.000 a R$ 100.000',
@@ -1718,6 +1770,12 @@ function orderLeadGroups(entries, field) {
     return entries.slice().sort((a,b) => (idx(a[0]) - idx(b[0])) || (b[1] - a[1]));
   }
   return entries.slice().sort((a,b) => b[1] - a[1]);
+}
+
+function renderLeads() {
+  const leads = filteredLeads();
+  renderLeadsTable(leads);
+  renderLeadsChart(leads);
 }
 
 function renderLeadsTable(leads) {
@@ -1786,33 +1844,24 @@ function renderLeadsChart(leads) {
   const parsed = leads.map(l => ({ d: parseDate(l.data_criacao), row: l })).filter(x => x.d);
   if (!parsed.length) return;
 
-  const { labels, dayFmt } = buildTimeAxis(parsed.map(x=>x.d), F.di, F.df, mode);
+  const { labels, bucketOf } = buildTimeAxis(parsed.map(x=>x.d), F.di, F.df, mode);
   if (!labels.length) return;
 
   const field = STATE.leadsBreakdown;
-  const valSet = new Set();
+  // Conta por valor (uma passada) e ordena via orderLeadGroups (faixa p/ patrimônio, senão contagem desc), limite 12 séries
+  const valCount = {};
   parsed.forEach(({ row }) => {
     let v = (row[field]||'').trim();
     if (field==='canal_originador' && !v) v = 'Outros';
-    valSet.add(v||'(Vazio)');
+    v = v || '(Vazio)';
+    valCount[v] = (valCount[v]||0) + 1;
   });
-
-  // Sort by count descending (faixa de patrimônio: ordem crescente fixa), limit to 12 series
-  const vals = field === 'patrimonio_investido_grupo'
-    ? [...valSet].sort((a,b) => {
-        const idx = v => { const i = PATRIMONIO_ORDER.indexOf(v); return i === -1 ? PATRIMONIO_ORDER.length : i; };
-        return idx(a) - idx(b);
-      }).slice(0,12)
-    : [...valSet].sort((a,b) => {
-        const ca = parsed.filter(({row}) => (row[field]||'').trim()===(a==='Outros'?'':a==='(Vazio)'?'':a)).length;
-        const cb = parsed.filter(({row}) => (row[field]||'').trim()===(b==='Outros'?'':b==='(Vazio)'?'':b)).length;
-        return cb - ca;
-      }).slice(0,12);
+  const vals = orderLeadGroups(Object.entries(valCount), field).slice(0,12).map(e => e[0]);
 
   const dm = {};
   labels.forEach(l => { dm[l] = {}; });
   parsed.forEach(({ d, row }) => {
-    const lbl = dayFmt(d);
+    const lbl = bucketOf(d);
     if (!dm[lbl]) return;
     let v = (row[field]||'').trim();
     if (field==='canal_originador' && !v) v = 'Outros';
@@ -1826,12 +1875,11 @@ function renderLeadsChart(leads) {
     backgroundColor: PALETTE[i % PALETTE.length],
     stack: 'stack',
   }));
-  // Soma as metas diárias dentro de cada rótulo do eixo (1 dia em modo 'dia', todo o mês em modo 'mes').
   const metaMap = {};
   RAW.metaLeads.forEach(m => {
-    const d = parseDate(m.data);
+    const d = parseDate(m.data, META_DATE_FMT);
     if (!d) return;
-    const lbl = dayFmt(d);
+    const lbl = bucketOf(d);
     metaMap[lbl] = (metaMap[lbl]||0) + parseNum(m.meta_total_de_leads);
   });
   datasets.push({
@@ -1848,26 +1896,21 @@ function renderLeadsChart(leads) {
 // ================================================================
 // RENDER: VENDAS
 // ================================================================
-// Quebras adicionais da Diária de Vendas (além de Metas Captação / Origem)
-const VENDAS_BREAKDOWNS = [
-  { field:'deal_utm_source',     label:'Source' },
-  { field:'funil',               label:'Funil' },
-  { field:'estrategia',          label:'Estratégia' },
-  { field:'fonte_original_pipe', label:'Fonte Orig.' },
-  { field:'closer_responsavel',  label:'Closer' },
-];
-
 function renderVendas() {
   const vendas = filteredVendas(true);
-  const sv = STATE.vendasSubview;
+  const sv  = STATE.vendasSubview;
+  const sub = document.getElementById('vendas-card-sub');
   if (sv === 'captacao') {
+    if (sub) sub.textContent = 'Metas inativas — serão ativadas na próxima fase';
     renderVendasCaptacao(vendas);
     renderVendasChart(vendas);
   } else if (sv === 'origem') {
+    if (sub) sub.textContent = 'Captação por origem (Suno vs Base)';
     renderVendasOrigem(vendas);
     renderVendasChart(vendas);
   } else {
     const dim = VENDAS_BREAKDOWNS.find(b => b.field === sv) || VENDAS_BREAKDOWNS[0];
+    if (sub) sub.textContent = `Captação agrupada por ${dim.label}`;
     renderVendasBreakdown(vendas, dim.field, dim.label);
     renderVendasBreakdownChart(vendas, dim.field, dim.label);
   }
@@ -1900,9 +1943,8 @@ function renderVendasCaptacao(vendas) {
   const mPlMes  = meta ? fmtR$(meta.metaPlMedioMes)     : '—';
   const mPlAte  = meta ? fmtR$(meta.metaPlMedioAteData) : '—';
 
-  const per = STATE.vendasTimeMode === 'mes' ? 'Mensal' : 'Diária';
   document.getElementById('vendas-card-title').textContent  = 'Metas de Captação';
-  document.getElementById('vendas-chart-title').textContent = `Captação ${per} (R$)`;
+  document.getElementById('vendas-chart-title').textContent = 'Captação Diária (R$)';
   document.getElementById('vendas-tbl-area').innerHTML = `
   <div class="tbl-wrap"><table>
     <thead><tr>
@@ -1934,9 +1976,8 @@ function renderVendasOrigem(vendas) {
   const suno    = vendas.filter(v => !isOrigemBase(v));
   const sumCap  = arr => arr.reduce((s,v)=>s+parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado),0);
   const plMed   = arr => arr.length ? sumCap(arr)/arr.length : 0;
-  const per = STATE.vendasTimeMode === 'mes' ? 'Mensal' : 'Diária';
   document.getElementById('vendas-card-title').textContent  = 'Captação por Origem';
-  document.getElementById('vendas-chart-title').textContent = `Captação ${per} por Origem (R$)`;
+  document.getElementById('vendas-chart-title').textContent = 'Captação Diária por Origem (R$)';
   document.getElementById('vendas-tbl-area').innerHTML = `
   <div class="tbl-wrap"><table>
     <thead><tr>
@@ -1951,81 +1992,117 @@ function renderVendasOrigem(vendas) {
   </table></div>`;
 }
 
-// Tabela: captação / quantidade / PL médio agrupados pela dimensão escolhida.
+// Quebras adicionais da Diária de Vendas (além de Metas Captação / Origem)
+const VENDAS_BREAKDOWNS = [
+  { field:'deal_utm_source',     label:'Source' },
+  { field:'funil',               label:'Funil' },
+  { field:'estrategia',          label:'Estratégia' },
+  { field:'fonte_original_pipe', label:'Fonte Orig.' },
+  { field:'closer_responsavel',  label:'Closer' },
+];
+
+// Tabela: captação / quantidade / PL médio por valor da dimensão.
 function renderVendasBreakdown(vendas, field, label) {
   const groups = {};
   vendas.forEach(v => {
     const k = (v[field]||'').trim() || '(Vazio)';
-    if (!groups[k]) groups[k] = { cap:0, n:0 };
+    if (!groups[k]) groups[k] = { cap:0, qtd:0 };
     groups[k].cap += parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado);
-    groups[k].n   += 1;
+    groups[k].qtd += 1;
   });
   const rows   = Object.entries(groups).sort((a,b) => b[1].cap - a[1].cap);
-  const totCap = vendas.reduce((s,v) => s + parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado), 0);
-  const per = STATE.vendasTimeMode === 'mes' ? 'Mensal' : 'Diária';
-
-  document.getElementById('vendas-card-title').textContent  = `Captação por ${label}`;
-  document.getElementById('vendas-chart-title').textContent = `Captação ${per} por ${label} (R$)`;
-
-  const bodyRows = rows.map(([k,g]) => `<tr>
-    <td>${esc(k)}</td>
-    <td class="num">${fmtR$(g.cap)}</td>
-    <td class="num">${fmtN(g.n)}</td>
-    <td class="num">${fmtR$(g.n ? g.cap/g.n : 0)}</td>
-  </tr>`).join('');
-
+  const totCap = rows.reduce((s,[,g]) => s + g.cap, 0);
+  const totQtd = rows.reduce((s,[,g]) => s + g.qtd, 0);
+  document.getElementById('vendas-card-title').textContent = `Captação por ${label}`;
+  const body = rows.map(([k,g]) => `<tr>
+      <td>${esc(k)}</td>
+      <td class="num">${fmtR$(g.cap)}</td>
+      <td class="num">${fmtN(g.qtd)}</td>
+      <td class="num">${fmtR$(g.qtd ? g.cap/g.qtd : 0)}</td>
+    </tr>`).join('');
   document.getElementById('vendas-tbl-area').innerHTML = `
   <div class="tbl-wrap"><table>
-    <thead><tr>
-      <th>${esc(label)}</th><th class="num">Captação</th><th class="num">Quantidade</th><th class="num">PL Médio</th>
-    </tr></thead>
-    <tbody>${bodyRows}
-      <tr class="tr-total"><td>Total</td>
-        <td class="num">${fmtR$(totCap)}</td><td class="num">${fmtN(vendas.length)}</td>
-        <td class="num">${fmtR$(vendas.length ? totCap/vendas.length : 0)}</td></tr>
+    <thead><tr><th>${esc(label)}</th><th class="num">Captação</th><th class="num">Quantidade</th><th class="num">PL Médio</th></tr></thead>
+    <tbody>
+      ${body}
+      <tr class="tr-total"><td>Total</td><td class="num">${fmtR$(totCap)}</td><td class="num">${fmtN(totQtd)}</td><td class="num">${fmtR$(totQtd ? totCap/totQtd : 0)}</td></tr>
     </tbody>
   </table></div>`;
+}
+
+// Gráfico: barras empilhadas de captação por valor da dimensão (paleta), Diário/Mensal + linha de meta.
+function renderVendasBreakdownChart(vendas, field, label) {
+  destroyChart('vendas');
+  const mode = STATE.vendasTimeMode;
+  const per  = mode === 'mes' ? 'Mensal' : 'Diária';
+  document.getElementById('vendas-chart-title').textContent = `Captação ${per} por ${label} (R$)`;
+  if (!vendas.length) return;
+  const parsed = vendas.map(v => ({ d: parseDate(v.data_venda, VENDA_DATE_FMT), row: v })).filter(x => x.d);
+  if (!parsed.length) return;
+  const { labels, bucketOf } = buildTimeAxis(parsed.map(x=>x.d), F.vdi, F.vdf, mode);
+  if (!labels.length) return;
+
+  const capVal = v => parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado);
+  const capByVal = {};
+  parsed.forEach(({ row }) => { const v=(row[field]||'').trim()||'(Vazio)'; capByVal[v]=(capByVal[v]||0)+capVal(row); });
+  const vals = Object.entries(capByVal).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
+
+  const dm = {}; labels.forEach(l => { dm[l] = {}; });
+  parsed.forEach(({ d, row }) => {
+    const lbl = bucketOf(d); if (!dm[lbl]) return;
+    const v = (row[field]||'').trim() || '(Vazio)';
+    if (vals.includes(v)) dm[lbl][v] = (dm[lbl][v]||0) + capVal(row);
+  });
+
+  const datasets = vals.map((v,i) => ({ label:v, data:labels.map(l=>dm[l][v]||0), backgroundColor:PALETTE[i % PALETTE.length], stack:'s' }));
+  const metaMap = {};
+  RAW.metaCaptacao.forEach(m => { const d=parseDate(m.data, META_DATE_FMT); if(!d) return; const lbl=bucketOf(d); metaMap[lbl]=(metaMap[lbl]||0)+parseNum(m.meta_de_captacao); });
+  datasets.push({ label:'Meta', type:'line', data:labels.map(l=>(l in metaMap?metaMap[l]:null)), borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0, spanGaps:true });
+
+  STATE.charts.vendas = new Chart(document.getElementById('vendas-chart'), { type:'bar', data:{ labels, datasets }, options: chartOpts(true) });
 }
 
 function renderVendasChart(vendas) {
   destroyChart('vendas');
   const mode = STATE.vendasTimeMode;
+  const per  = mode === 'mes' ? 'Mensal' : 'Diária';
+  document.getElementById('vendas-chart-title').textContent =
+    STATE.vendasSubview === 'origem' ? `Captação ${per} por Origem (R$)` : `Captação ${per} (R$)`;
   if (!vendas.length) return;
 
   const parsed = vendas.map(v => ({ d: parseDate(v.data_venda, VENDA_DATE_FMT), row: v })).filter(x => x.d);
   if (!parsed.length) return;
-  const { labels, dayFmt } = buildTimeAxis(parsed.map(x=>x.d), F.vdi, F.vdf, mode);
+  const { labels, bucketOf } = buildTimeAxis(parsed.map(x=>x.d), F.vdi, F.vdf, mode);
   if (!labels.length) return;
 
   const dmSuno = {}, dmBase = {};
   labels.forEach(l => { dmSuno[l]=0; dmBase[l]=0; });
   parsed.forEach(({ d, row }) => {
-    const lbl = dayFmt(d);
+    const lbl = bucketOf(d);
     if (dmSuno[lbl] === undefined) return;
     const val = parsePatrimonio(row.adv_patrimonio_validado || row.patrimonio_validado);
     if (isOrigemBase(row)) dmBase[lbl] += val;
     else                    dmSuno[lbl] += val;
   });
 
-  // Soma as metas diárias dentro de cada rótulo do eixo (1 dia em modo 'dia', todo o mês em modo 'mes').
   const metaMap = {};
   RAW.metaCaptacao.forEach(m => {
-    const d = parseDate(m.data);
+    const d = parseDate(m.data, META_DATE_FMT);
     if (!d) return;
-    const lbl = dayFmt(d);
+    const lbl = bucketOf(d);
     metaMap[lbl] = (metaMap[lbl]||0) + parseNum(m.meta_de_captacao);
   });
 
-  // Atingimento por barra (sem meta/meta 0 = atingida). Apenas 2 estados: verde/vermelho.
-  const atingiu = labels.map(l => {
+  // Atingimento por barra (sem meta/meta 0 = atingida). 2 estados: verde/vermelho.
+  const met = labels.map(l => {
     const meta = metaMap[l];
     if (meta === undefined || meta <= 0) return true;
     return (dmSuno[l] + dmBase[l]) >= meta;
   });
-  const barColors  = atingiu.map(ok => ok ? '#16a34a' : '#ef4444');
+  const barColors  = met.map(m => m ? '#16a34a' : '#ef4444');
   // Na visão por Origem: Suno em tom CLARO, Base em tom ESCURO — facilita distinguir no empilhamento.
-  const sunoColors = atingiu.map(ok => ok ? '#86efac' : '#fca5a5');
-  const baseColors = atingiu.map(ok => ok ? '#15803d' : '#b91c1c');
+  const sunoColors = met.map(m => m ? '#86efac' : '#fca5a5'); // claro
+  const baseColors = met.map(m => m ? '#15803d' : '#b91c1c'); // escuro
 
   const datasets = STATE.vendasSubview === 'origem' ? [
     { label:'Origem Suno', data:labels.map(l=>dmSuno[l]), backgroundColor:sunoColors, stack:'s' },
@@ -2035,110 +2112,12 @@ function renderVendasChart(vendas) {
   ];
   datasets.push({
     label:'Meta', type:'line',
-    data: labels.map(l => (metaMap[l] > 0 ? metaMap[l] : null)),
+    data: labels.map(l => (l in metaMap ? metaMap[l] : null)),
     borderColor:'#f97316', borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false, order:0, spanGaps:true,
   });
 
   STATE.charts.vendas = new Chart(document.getElementById('vendas-chart'), {
     type:'bar', data:{ labels, datasets }, options: chartOpts(true),
-  });
-}
-
-// Gráfico empilhado por dimensão (Source/Funil/Estratégia/Fonte Orig./Closer) — mesmo padrão do gráfico de Leads.
-function renderVendasBreakdownChart(vendas, field, label) {
-  destroyChart('vendas');
-  const mode = STATE.vendasTimeMode;
-  if (!vendas.length) return;
-
-  const parsed = vendas.map(v => ({ d: parseDate(v.data_venda, VENDA_DATE_FMT), row: v })).filter(x => x.d);
-  if (!parsed.length) return;
-  const { labels, dayFmt } = buildTimeAxis(parsed.map(x=>x.d), F.vdi, F.vdf, mode);
-  if (!labels.length) return;
-
-  const valSet = new Set();
-  parsed.forEach(({ row }) => valSet.add((row[field]||'').trim() || '(Vazio)'));
-
-  // Ordena por captação total desc, limita a 12 séries.
-  const capByVal = {};
-  parsed.forEach(({ row }) => {
-    const v = (row[field]||'').trim() || '(Vazio)';
-    capByVal[v] = (capByVal[v]||0) + parsePatrimonio(row.adv_patrimonio_validado || row.patrimonio_validado);
-  });
-  const vals = [...valSet].sort((a,b) => (capByVal[b]||0) - (capByVal[a]||0)).slice(0,12);
-
-  const dm = {};
-  labels.forEach(l => { dm[l] = {}; });
-  parsed.forEach(({ d, row }) => {
-    const lbl = dayFmt(d);
-    if (!dm[lbl]) return;
-    const v = (row[field]||'').trim() || '(Vazio)';
-    if (vals.includes(v)) dm[lbl][v] = (dm[lbl][v]||0) + parsePatrimonio(row.adv_patrimonio_validado || row.patrimonio_validado);
-  });
-
-  const datasets = vals.map((v,i) => ({
-    label: v,
-    data:  labels.map(l => dm[l][v]||0),
-    backgroundColor: PALETTE[i % PALETTE.length],
-    stack: 'stack',
-  }));
-
-  STATE.charts.vendas = new Chart(document.getElementById('vendas-chart'), {
-    type:'bar', data:{ labels, datasets }, options: chartOpts(true),
-  });
-}
-
-// ================================================================
-// RENDER: REUNIÕES
-// ================================================================
-const REUNIOES_BREAKDOWN_LABELS = {
-  tipo_reuniao: 'Tipo de Reunião', deal_utm_source: 'Source', funil: 'Funil', estrategia: 'Estratégia',
-  fonte_original_pipe: 'Fonte Orig.', closer_responsavel: 'Closer', sdr_responsavel: 'SDR',
-};
-
-function renderReunioes() {
-  destroyChart('reunioes');
-  const mode  = STATE.reunioesTimeMode;
-  const field = STATE.reunioesBreakdown;
-  const per   = mode === 'mes' ? 'Mensal' : mode === 'semana' ? 'Semanal' : 'Diário';
-  document.getElementById('reunioes-chart-title').textContent =
-    `Reuniões — ${per} · por ${REUNIOES_BREAKDOWN_LABELS[field] || field}`;
-
-  // Volume real de atividades: filtros globais + Tipo de Reunião, SEM o dedup-por-contato
-  // que filteredReuniones() aplica para a contagem de "reuniões realizadas".
-  const rows = RAW.reunioes.filter(r => passGlobal(r) && passTipoReuniao(r) && passCloserSdrReuniao(r));
-  if (!rows.length) return;
-
-  const parsed = rows.map(r => ({ d: parseDate(r.data_atividade), row: r })).filter(x => x.d);
-  if (!parsed.length) return;
-
-  const { labels, dayFmt } = buildTimeAxis(parsed.map(x=>x.d), null, null, mode);
-  if (!labels.length) return;
-
-  const countByVal = {};
-  parsed.forEach(({ row }) => {
-    const v = (row[field]||'').trim() || '(Vazio)';
-    countByVal[v] = (countByVal[v]||0) + 1;
-  });
-  const vals = Object.keys(countByVal).sort((a,b) => countByVal[b]-countByVal[a]).slice(0,12);
-
-  const dm = {};
-  labels.forEach(l => { dm[l] = {}; });
-  parsed.forEach(({ d, row }) => {
-    const lbl = dayFmt(d);
-    if (!dm[lbl]) return;
-    const v = (row[field]||'').trim() || '(Vazio)';
-    if (vals.includes(v)) dm[lbl][v] = (dm[lbl][v]||0) + 1;
-  });
-
-  const datasets = vals.map((v,i) => ({
-    label: v,
-    data:  labels.map(l => dm[l][v]||0),
-    backgroundColor: PALETTE[i % PALETTE.length],
-    stack: 'stack',
-  }));
-
-  STATE.charts.reunioes = new Chart(document.getElementById('reunioes-chart'), {
-    type:'bar', data:{ labels, datasets }, options: chartOpts(false),
   });
 }
 
@@ -2263,105 +2242,7 @@ function renderCohort() {
 }
 
 // ================================================================
-// RENDER: FORECAST
-// ================================================================
-const FORECAST_PRIOS = [
-  { key:'alta',  label:'Alta'  },
-  { key:'media', label:'Média' },
-  { key:'baixa', label:'Baixa' },
-];
-
-function prioKey(row) {
-  const v = normVal(row.prioridade);
-  if (v === 'alta')  return 'alta';
-  if (v === 'media') return 'media';
-  if (v === 'baixa') return 'baixa';
-  return 'outras';
-}
-
-// Array de etapas distintas da última renderização — os chips referenciam por índice (data-idx),
-// nunca embutindo a string no atributo HTML, para não depender de escaping/encoding de data-*.
-let FORECAST_ETAPAS = [];
-
-function renderForecastEtapaChips() {
-  const el = document.getElementById('forecast-etapa-chips');
-  if (!el) return;
-  FORECAST_ETAPAS = [...new Set(RAW.negociacao.map(r => (r.etapa_negocio||'').trim() || '(Vazio)'))].sort();
-  if (!FORECAST_ETAPAS.length) {
-    el.innerHTML = '<span style="font-size:12px;color:var(--text-faint)">Sem dados de Etapa do Negócio</span>';
-    return;
-  }
-  el.innerHTML = FORECAST_ETAPAS.map((e,i) =>
-    `<button class="preset-btn forecast-etapa-chip ${STATE.forecastEtapa.has(e)?'active':''}" data-idx="${i}">${esc(e)}</button>`
-  ).join('');
-}
-
-function computeAndRenderForecast() {
-  const rows  = filteredNegociacao();
-  const fac   = STATE.forecastFactors;
-  const facOf = k => k === 'outras' ? 0 : (Number(fac[k]) || 0) / 100;
-  const fmtN1 = n => (n||0).toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 });
-
-  const g = { alta:{n:0,pat:0}, media:{n:0,pat:0}, baixa:{n:0,pat:0}, outras:{n:0,pat:0} };
-  rows.forEach(r => {
-    const k = prioKey(r);
-    g[k].n += 1;
-    g[k].pat += parsePatrimonio(r.adv_patrimonio_validado || r.patrimonio_validado);
-  });
-
-  const linhas = [...FORECAST_PRIOS];
-  if (g.outras.n > 0) linhas.push({ key:'outras', label:'(Sem prioridade)' });
-
-  let totN=0, totPat=0, projN=0, projPat=0;
-  linhas.forEach(({key}) => {
-    totN += g[key].n; totPat += g[key].pat;
-    projN += g[key].n*facOf(key); projPat += g[key].pat*facOf(key);
-  });
-
-  document.getElementById('forecast-summary').innerHTML = [
-    { label:'Clientes na base',          v: fmtN(totN),     sub:`${rows.length} negociações` },
-    { label:'Projeção de Vendas (qtd)',  v: fmtN1(projN),   sub:'expectativa de clientes' },
-    { label:'Patrimônio na base',        v: fmtR$(totPat),  sub:'patrimônio validado' },
-    { label:'Projeção de Captação (R$)', v: fmtR$(projPat), sub:'expectativa de patrimônio' },
-  ].map(c => `
-    <div class="metric-card">
-      <div class="metric-label">${c.label}</div>
-      <div class="metric-value" style="font-size:22px">${c.v}</div>
-      <div class="metric-sub">${c.sub}</div>
-    </div>`).join('');
-
-  document.getElementById('forecast-tbl-qtd').innerHTML = `<table>
-    <thead><tr><th>Prioridade</th><th class="num">Nº Clientes</th><th class="num">Taxa Conversão</th><th class="num">Projeção (clientes)</th></tr></thead>
-    <tbody>
-      ${linhas.map(({key,label}) => `<tr>
-        <td>${esc(label)}</td>
-        <td class="num">${fmtN(g[key].n)}</td>
-        <td class="num">${key==='outras'?'—':fmtPct(facOf(key))}</td>
-        <td class="num" style="font-weight:600">${fmtN1(g[key].n*facOf(key))}</td>
-      </tr>`).join('')}
-      <tr class="tr-total"><td>Total</td><td class="num">${fmtN(totN)}</td><td class="num">—</td><td class="num">${fmtN1(projN)}</td></tr>
-    </tbody></table>`;
-
-  document.getElementById('forecast-tbl-pat').innerHTML = `<table>
-    <thead><tr><th>Prioridade</th><th class="num">Patrimônio Validado</th><th class="num">Taxa Conversão</th><th class="num">Projeção (R$)</th></tr></thead>
-    <tbody>
-      ${linhas.map(({key,label}) => `<tr>
-        <td>${esc(label)}</td>
-        <td class="num">${fmtR$(g[key].pat)}</td>
-        <td class="num">${key==='outras'?'—':fmtPct(facOf(key))}</td>
-        <td class="num" style="font-weight:600">${fmtR$(g[key].pat*facOf(key))}</td>
-      </tr>`).join('')}
-      <tr class="tr-total"><td>Total</td><td class="num">${fmtR$(totPat)}</td><td class="num">—</td><td class="num">${fmtR$(projPat)}</td></tr>
-    </tbody></table>`;
-}
-
-function renderForecast() {
-  renderForecastEtapaChips();
-  computeAndRenderForecast();
-}
-
-// ================================================================
-// RENDER: TABELA DINÂMICA (PIVOT)
+// TABELA DINÂMICA (PIVOT) — funil (L→M→R→V) por parâmetros hierárquicos
 // ================================================================
 const PIVOT_DIMS = [
   { key:'deal_utm_source',            label:'Source' },
@@ -2391,7 +2272,7 @@ function pivotDateLabel(key, gran) {
   return `${f(s)}–${f(e)}`;
 }
 
-// Extrai o valor da dimensão para uma linha (leads/reuniões usam data_criacao; vendas caem para data_venda).
+// Valor da dimensão para uma linha. Datas usam data_criacao (vendas: data_criacao || data_venda).
 function pivotValue(dim, row, isVenda) {
   if (dim === '__data__') {
     const d = isVenda ? (parseDate(row.data_criacao) || parseDate(row.data_venda, VENDA_DATE_FMT)) : parseDate(row.data_criacao);
@@ -2422,28 +2303,33 @@ function buildPivotTree(dims) {
   return root;
 }
 
-// Colunas clicáveis do header da Tabela Dinâmica → acessor do valor a ordenar.
-// Taxas usam -1 como fallback (numerador zerado) para "—" ficar sempre no fim, asc ou desc.
-const PIVOT_SORT_COLS = {
-  L:  { get: n => n.L },
-  LM: { get: n => n.L ? n.M / n.L : -1 },
-  M:  { get: n => n.M },
-  MR: { get: n => n.M ? n.R / n.M : -1 },
-  R:  { get: n => n.R },
-  RV: { get: n => n.R ? n.V / n.R : -1 },
-  V:  { get: n => n.V },
-  LV: { get: n => n.L ? n.V / n.L : -1 },
+// Dimensão da pivot → chave do SEL do filtro global (para respeitar o filtro dentro da dimensão)
+const PIVOT_DIM_SEL_KEY = {
+  deal_utm_source:'source', estrategia:'estrategia', funil:'funil',
+  patrimonio_investido_grupo:'patrimonio', fonte_original_pipe:'fonteOriginalPipe',
+  canal_originador:'canalOriginador', closer_responsavel:'closerResponsavel', sdr_responsavel:'sdrResponsavel',
+};
+// Extratores de valor por coluna, para ordenação por clique no cabeçalho (rate ausente = -1 → vai pro fim no desc)
+const PIVOT_SORT_VAL = {
+  L: n => n.L,           lm: n => n.L ? n.M/n.L : -1,
+  M: n => n.M,           mr: n => n.M ? n.R/n.M : -1,
+  R: n => n.R,           rv: n => n.R ? n.V/n.R : -1,
+  V: n => n.V,           conv: n => n.L ? n.V/n.L : -1,
 };
 
 function orderPivotChildren(entries, dim) {
+  // Ordenação manual (clique no cabeçalho) tem prioridade sobre a ordem padrão
+  const s = STATE.pivotSort;
+  if (s && s.col && PIVOT_SORT_VAL[s.col]) {
+    const f = PIVOT_SORT_VAL[s.col], mul = s.dir === 'asc' ? 1 : -1;
+    return entries.sort((a,b) => (f(a[1]) - f(b[1])) * mul);
+  }
   if (dim === 'patrimonio_investido_grupo') {
     const idx = v => { const i = PATRIMONIO_ORDER.indexOf(v); return i === -1 ? PATRIMONIO_ORDER.length : i; };
     return entries.sort((a,b) => (idx(a[0]) - idx(b[0])) || (b[1].L - a[1].L));
   }
   if (dim === '__data__') return entries.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-  const { get } = PIVOT_SORT_COLS[STATE.pivotSortCol] || PIVOT_SORT_COLS.L;
-  const dir = STATE.pivotSortDir === 'asc' ? 1 : -1;
-  return entries.sort((a,b) => (get(a[1]) - get(b[1])) * dir || (b[1].L - a[1].L));
+  return entries.sort((a,b) => (b[1].L - a[1].L) || (b[1].V - a[1].V));
 }
 
 const pvPct = (a,b) => b ? fmtPct(a/b) : '—';
@@ -2476,12 +2362,17 @@ function pivotTotalRowHtml(n) {
   </tr>`;
 }
 
-// Renderiza linhas recursivamente, expandindo só os caminhos presentes em expandedSet.
 function renderPivotRows(node, depth, dims, pathKey, expandedSet, paths, out) {
   if (depth >= dims.length || !node.children || !node.children.size) return;
   const dim = dims[depth];
+  // Respeita o filtro global na dimensão: se o filtro daquele parâmetro está ativo,
+  // mostra só os valores selecionados (essencial p/ closer, que não filtra os leads).
+  const selKey = PIVOT_DIM_SEL_KEY[dim];
+  const selSet = selKey ? SEL[selKey] : null;
+  const selActive = selSet && selSet.size > 0;
   for (const [val, child] of orderPivotChildren([...node.children.entries()], dim)) {
-    const myPath = pathKey ? pathKey + ' ' + val : val;
+    if (selActive && !selSet.has(val) && !(val === '(Vazio)' && selSet.has(''))) continue;
+    const myPath = pathKey ? pathKey + '|#|' + val : val;
     const hasChildren = (depth+1 < dims.length) && child.children && child.children.size > 0;
     const expanded = expandedSet.has(myPath);
     const label = dim === '__data__' ? pivotDateLabel(val, STATE.pivotDateGran) : val;
@@ -2518,45 +2409,164 @@ function renderPivotGran() {
     </div>`;
 }
 
-function renderPivotTable() {
+// Re-renderiza a tabela (cabeçalho com ordenação + corpo) usando a árvore em cache.
+// Usado por expandir/recolher e por clique de ordenação (não reconstrói a árvore).
+function renderPivotArea() {
   const root = STATE.pivotTree;
   if (!root) return;
+  const cols = [['L','Leads'],['lm','L→M'],['M','Marcadas'],['mr','M→R'],['R','Realizadas'],['rv','R→V'],['V','Vendas'],['conv','Conv. L→V']];
+  const th = cols.map(([c,lbl]) => {
+    const active = STATE.pivotSort.col === c;
+    const arrow = active ? (STATE.pivotSort.dir === 'desc' ? ' ▼' : ' ▲') : '';
+    return `<th class="num pv-sortable${active?' pv-sorted':''}" data-sortcol="${c}">${lbl}${arrow}</th>`;
+  }).join('');
   STATE.pivotPaths = [];
-  const out = [ pivotTotalRowHtml(root) ];
-  renderPivotRows(root, 0, STATE.pivotDims, '', STATE.pivotExpanded, STATE.pivotPaths, out);
-  const tb = document.getElementById('pivot-tbody');
-  if (tb) tb.innerHTML = out.join('');
-}
-
-function pivotSortArrow(col) {
-  if (STATE.pivotSortCol !== col) return '';
-  return STATE.pivotSortDir === 'desc' ? ' ▼' : ' ▲';
+  const body = [ pivotTotalRowHtml(root) ];
+  renderPivotRows(root, 0, STATE.pivotDims, '', STATE.pivotExpanded, STATE.pivotPaths, body);
+  document.getElementById('pivot-table-area').innerHTML = `
+    <table class="pivot-tbl">
+      <thead><tr><th>Parâmetro</th>${th}</tr></thead>
+      <tbody>${body.join('')}</tbody>
+    </table>`;
 }
 
 function renderPivot() {
   renderPivotParams();
   renderPivotGran();
   STATE.pivotTree = buildPivotTree(STATE.pivotDims);
-  document.getElementById('pivot-table-area').innerHTML = `
-    <table class="pivot-tbl">
-      <thead><tr>
-        <th>Parâmetro</th>
-        <th class="num pv-sort" data-sort="L">Leads${pivotSortArrow('L')}</th><th class="num pv-sort" data-sort="LM">L→M${pivotSortArrow('LM')}</th>
-        <th class="num pv-sort" data-sort="M">Marcadas${pivotSortArrow('M')}</th><th class="num pv-sort" data-sort="MR">M→R${pivotSortArrow('MR')}</th>
-        <th class="num pv-sort" data-sort="R">Realizadas${pivotSortArrow('R')}</th><th class="num pv-sort" data-sort="RV">R→V${pivotSortArrow('RV')}</th>
-        <th class="num pv-sort" data-sort="V">Vendas${pivotSortArrow('V')}</th><th class="num pv-sort" data-sort="LV">Conv. L→V${pivotSortArrow('LV')}</th>
-      </tr></thead>
-      <tbody id="pivot-tbody"></tbody>
-    </table>`;
-  renderPivotTable();
+  renderPivotArea();
 }
 
 function togglePivotDim(dim) {
   const i = STATE.pivotDims.indexOf(dim);
   if (i >= 0) STATE.pivotDims.splice(i, 1);
   else        STATE.pivotDims.push(dim);
-  STATE.pivotExpanded.clear(); // a hierarquia mudou, caminhos antigos não fazem mais sentido
+  STATE.pivotExpanded.clear(); // a hierarquia mudou
   renderPivot();
+}
+
+// ================================================================
+// RENDER: REUNIÕES (volume por data de atividade, empilhado por parâmetro)
+// ================================================================
+function renderReunioes() {
+  destroyChart('reunioes');
+  const mode  = STATE.reunioesTimeMode;
+  const field = STATE.reunioesBreakdown;
+  const per   = mode === 'mes' ? 'Mensal' : mode === 'semana' ? 'Semanal' : 'Diário';
+  const lblMap = { tipo_reuniao:'Tipo de Reunião', deal_utm_source:'Source', funil:'Funil', estrategia:'Estratégia', fonte_original_pipe:'Fonte Orig.', closer_responsavel:'Closer', sdr_responsavel:'SDR' };
+  document.getElementById('reunioes-chart-title').textContent = `Reuniões — ${per} · por ${lblMap[field] || field}`;
+
+  // Reuniões filtradas (filtros globais + tipo/closer/sdr defensivos) — SEM dedup: volume real de atividades.
+  let reunTodas = RAW.reunioes.filter(r => passGlobal(r) && passSdrCloser(r, SDR_IN_REUNIOES, CLOSER_IN_REUNIOES, TIPO_IN_REUNIOES));
+  // Filtro específico da aba: data da atividade (data_da_atividade)
+  if (F.rai || F.raf) reunTodas = reunTodas.filter(r => { const d = parseDate(r.data_da_atividade); return d && (!F.rai || d >= F.rai) && (!F.raf || d <= F.raf); });
+  // Dedup conforme o modo escolhido no dashboard (negócio / contato / email+tipo)
+  const reun = dedupReunioes(reunTodas);
+  if (!reun.length) return;
+  const parsed = reun.map(r => ({ d: parseDate(r.data_da_atividade), row: r })).filter(x => x.d);
+  if (!parsed.length) return;
+
+  // Eixo pela data da atividade (não pelo filtro de criação) — limites pelos próprios dados.
+  const { labels, bucketOf } = buildTimeAxis(parsed.map(x=>x.d), F.rai, F.raf, mode);
+  if (!labels.length) return;
+
+  const valCount = {};
+  parsed.forEach(({ row }) => { const v=(row[field]||'').trim()||'(Vazio)'; valCount[v]=(valCount[v]||0)+1; });
+  const vals = Object.entries(valCount).sort((a,b)=>b[1]-a[1]).slice(0,12).map(e => e[0]);
+
+  const dm = {}; labels.forEach(l => { dm[l] = {}; });
+  parsed.forEach(({ d, row }) => {
+    const lbl = bucketOf(d); if (!dm[lbl]) return;
+    const v = (row[field]||'').trim() || '(Vazio)';
+    if (vals.includes(v)) dm[lbl][v] = (dm[lbl][v]||0) + 1;
+  });
+
+  const datasets = vals.map((v,i) => ({ label:v, data:labels.map(l=>dm[l][v]||0), backgroundColor:PALETTE[i % PALETTE.length], stack:'r' }));
+  STATE.charts.reunioes = new Chart(document.getElementById('reunioes-chart'), {
+    type:'bar', data:{ labels, datasets }, options: chartOpts(false),
+  });
+}
+
+// ================================================================
+// RENDER: FORECAST (projeção a partir da base Negociação)
+// ================================================================
+const FORECAST_PRIOS = [
+  { key:'alta',  label:'Prioridade Alta' },
+  { key:'media', label:'Prioridade Média' },
+  { key:'baixa', label:'Prioridade Baixa' },
+];
+function prioKey(row) {
+  const v = normVal(row.prioridade);
+  if (v === 'alta')  return 'alta';
+  if (v === 'media') return 'media';
+  if (v === 'baixa') return 'baixa';
+  return 'outras';
+}
+
+function renderForecastEtapaChips() {
+  const el = document.getElementById('forecast-etapa-chips');
+  if (!el) return;
+  const etapas = [...new Set(RAW.negociacao.map(r => (r.etapa_do_negocio||'').trim() || '(Vazio)'))].sort();
+  if (!etapas.length) { el.innerHTML = '<span style="font-size:12px;color:var(--text-faint)">Sem dados de Etapa do Negócio</span>'; return; }
+  el.innerHTML = etapas.map(e =>
+    `<button class="preset-btn forecast-etapa-chip ${STATE.forecastEtapa.has(e)?'active':''}" data-etapa="${esc(e)}">${esc(e)}</button>`
+  ).join('');
+}
+
+function computeAndRenderForecast() {
+  const rows  = filteredNegociacao();
+  const fac   = STATE.forecastFactors;
+  const facOf = k => k === 'outras' ? 0 : (Number(fac[k]) || 0) / 100;
+  const fmtN1 = n => (n||0).toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 });
+
+  const g = { alta:{n:0,pat:0}, media:{n:0,pat:0}, baixa:{n:0,pat:0}, outras:{n:0,pat:0} };
+  rows.forEach(r => {
+    const k = prioKey(r);
+    g[k].n += 1;
+    g[k].pat += parsePatrimonio(r.adv_patrimonio_validado || r.patrimonio_validado);
+  });
+
+  const linhas = [...FORECAST_PRIOS];
+  if (g.outras.n > 0) linhas.push({ key:'outras', label:'(Sem prioridade)' });
+
+  let totN=0, totPat=0, projN=0, projPat=0;
+  linhas.forEach(({key}) => { totN += g[key].n; totPat += g[key].pat; projN += g[key].n*facOf(key); projPat += g[key].pat*facOf(key); });
+
+  document.getElementById('forecast-summary').innerHTML = [
+    { label:'Clientes na base',          v: fmtN(totN),    sub:`${rows.length} negociações` },
+    { label:'Projeção de Vendas (qtd)',  v: fmtN1(projN),  sub:'expectativa de clientes' },
+    { label:'Patrimônio na base',        v: fmtR$(totPat), sub:'patrimônio validado' },
+    { label:'Projeção de Captação (R$)', v: fmtR$(projPat),sub:'expectativa de patrimônio' },
+  ].map(c => `<div class="metric-card"><div class="metric-label">${c.label}</div><div class="metric-value" style="font-size:22px">${c.v}</div><div class="metric-sub">${c.sub}</div></div>`).join('');
+
+  document.getElementById('forecast-tbl-qtd').innerHTML = `<table>
+    <thead><tr><th>Prioridade</th><th class="num">Nº Clientes</th><th class="num">Taxa Conversão</th><th class="num">Projeção (clientes)</th></tr></thead>
+    <tbody>
+      ${linhas.map(({key,label}) => `<tr>
+        <td>${esc(label)}</td>
+        <td class="num">${fmtN(g[key].n)}</td>
+        <td class="num">${key==='outras'?'—':fmtPct(facOf(key))}</td>
+        <td class="num" style="font-weight:600">${fmtN1(g[key].n*facOf(key))}</td>
+      </tr>`).join('')}
+      <tr class="tr-total"><td>Total</td><td class="num">${fmtN(totN)}</td><td class="num">—</td><td class="num">${fmtN1(projN)}</td></tr>
+    </tbody></table>`;
+
+  document.getElementById('forecast-tbl-pat').innerHTML = `<table>
+    <thead><tr><th>Prioridade</th><th class="num">Patrimônio Validado</th><th class="num">Taxa Conversão</th><th class="num">Projeção (R$)</th></tr></thead>
+    <tbody>
+      ${linhas.map(({key,label}) => `<tr>
+        <td>${esc(label)}</td>
+        <td class="num">${fmtR$(g[key].pat)}</td>
+        <td class="num">${key==='outras'?'—':fmtPct(facOf(key))}</td>
+        <td class="num" style="font-weight:600">${fmtR$(g[key].pat*facOf(key))}</td>
+      </tr>`).join('')}
+      <tr class="tr-total"><td>Total</td><td class="num">${fmtR$(totPat)}</td><td class="num">—</td><td class="num">${fmtR$(projPat)}</td></tr>
+    </tbody></table>`;
+}
+
+function renderForecast() {
+  renderForecastEtapaChips();
+  computeAndRenderForecast();
 }
 
 // ================================================================
@@ -2575,38 +2585,32 @@ function buildDayAxis(dates, diOver, dfOver) {
   return { labels, dayFmt };
 }
 
-// Eixo de tempo para gráficos: 'dia' (= buildDayAxis) ou 'mes' (agrupado por mês, monthKey/monthLabel).
+// Eixo de tempo para gráficos: 'dia' (comportamento atual) ou 'mes' (agrupado por mês).
 function buildTimeAxis(dates, diOver, dfOver, mode) {
   if (mode === 'semana') {
-    let start = diOver ? new Date(diOver) : new Date(Math.min(...dates.map(d=>d.getTime())));
-    let end   = dfOver ? new Date(dfOver) : new Date(Math.max(...dates.map(d=>d.getTime())));
-    if (end - start > 730 * 86400000) start = new Date(end.getTime() - 730*86400000); // cap 2 anos
-    const mondayOf = d => { const dow = (d.getDay()+6)%7; return new Date(d.getFullYear(), d.getMonth(), d.getDate()-dow); };
-    const f = dt => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-    const weekLabel = mon => { const we = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate()+6); return `${f(mon)}–${f(we)}`; };
-
-    let cur = mondayOf(start);
-    const lastMonday = mondayOf(end);
-    const labels = [];
-    while (cur <= lastMonday) { labels.push(weekLabel(cur)); cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+7); }
-    const dayFmtSemana = d => weekLabel(mondayOf(d));
-    return { labels, dayFmt: dayFmtSemana };
+    if (!dates.length) return { labels: [], bucketOf: d => pivotDateLabel(pivotDateKey(d,'semana'),'semana') };
+    const start = diOver ? new Date(diOver) : new Date(Math.min(...dates.map(d=>d.getTime())));
+    const end   = dfOver ? new Date(dfOver) : new Date(Math.max(...dates.map(d=>d.getTime())));
+    const dow = (start.getDay()+6)%7;
+    const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate()-dow); // segunda
+    const keys = [];
+    while (cur <= end) { keys.push(pivotDateKey(cur,'semana')); cur.setDate(cur.getDate()+7); }
+    if (keys.length > 53) keys.splice(0, keys.length - 53); // últimas 53 semanas
+    return { labels: keys.map(k => pivotDateLabel(k,'semana')), bucketOf: d => pivotDateLabel(pivotDateKey(d,'semana'),'semana') };
   }
-
-  if (mode !== 'mes') return buildDayAxis(dates, diOver, dfOver);
-
-  let start = diOver ? new Date(diOver) : new Date(Math.min(...dates.map(d=>d.getTime())));
-  let end   = dfOver ? new Date(dfOver) : new Date(Math.max(...dates.map(d=>d.getTime())));
-  let k = monthKey(start);
-  const endK = monthKey(end);
-  const labels = [];
-  while (true) {
-    labels.push(monthLabel(k));
-    if (k === endK) break;
-    k = addMonths(k, 1);
+  if (mode !== 'mes') {
+    const ax = buildDayAxis(dates, diOver, dfOver);
+    return { labels: ax.labels, bucketOf: ax.dayFmt };
   }
-  const dayFmtMes = d => monthLabel(monthKey(d));
-  return { labels, dayFmt: dayFmtMes };
+  if (!dates.length) return { labels: [], bucketOf: d => monthLabel(monthKey(d)) };
+  const start = diOver ? new Date(diOver) : new Date(Math.min(...dates.map(d=>d.getTime())));
+  const end   = dfOver ? new Date(dfOver) : new Date(Math.max(...dates.map(d=>d.getTime())));
+  const mks = [];
+  const cur  = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endM = new Date(end.getFullYear(),   end.getMonth(),   1);
+  while (cur <= endM) { mks.push(monthKey(cur)); cur.setMonth(cur.getMonth()+1); }
+  if (mks.length > 24) mks.splice(0, mks.length - 24); // mantém os últimos 24 meses
+  return { labels: mks.map(monthLabel), bucketOf: d => monthLabel(monthKey(d)) };
 }
 
 function destroyChart(key) {
@@ -2636,11 +2640,11 @@ function render() {
   switch(STATE.activeTab) {
     case 'funil':  renderFunil();  break;
     case 'leads':  renderLeads();  break;
-    case 'vendas':   renderVendas();   break;
+    case 'vendas': renderVendas(); break;
+    case 'cohort': renderCohort(); break;
     case 'reunioes': renderReunioes(); break;
-    case 'cohort':   renderCohort();   break;
-    case 'pivot':    renderPivot();    break;
     case 'forecast': renderForecast(); break;
+    case 'pivot':  renderPivot();  break;
     case 'ia':     break;
   }
 }
@@ -2884,7 +2888,7 @@ function bindEvents() {
       const suffix = id.endsWith('di') ? 'T00:00:00' : 'T23:59:59';
       F[key] = e.target.value ? new Date(e.target.value + suffix) : null;
       // Clear preset highlight when user manually edits
-      const bar = isVenda ? '.view-filter-bar' : '.filters-bar';
+      const bar = isVenda ? '#view-vendas' : '.filters-bar';
       document.querySelectorAll(`${bar} .preset-btn`).forEach(b => b.classList.remove('active'));
       if (!isVenda || STATE.activeTab === 'vendas') render();
     });
@@ -2894,6 +2898,28 @@ function bindEvents() {
   dateInput('f-vdi', 'vdi', true);
   dateInput('f-vdf', 'vdf', true);
 
+  // Filtro de data da atividade (aba Reuniões) — listeners próprios (start/end)
+  ['f-rai','f-raf'].forEach(id => {
+    const key = id === 'f-rai' ? 'rai' : 'raf';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', e => {
+      const suffix = id === 'f-rai' ? 'T00:00:00' : 'T23:59:59';
+      F[key] = e.target.value ? new Date(e.target.value + suffix) : null;
+      document.querySelectorAll('#view-reunioes .preset-btn').forEach(b => b.classList.remove('active'));
+      if (STATE.activeTab === 'reunioes') render();
+    });
+  });
+
+  // Modo de contagem de reuniões (Negócio / Contato / Email+Tipo) — global
+  document.getElementById('reuniao-count-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.reuniaoCountMode = btn.dataset.countmode;
+    document.querySelectorAll('#reuniao-count-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    render();
+  });
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       STATE.activeTab = btn.dataset.tab;
@@ -2901,22 +2927,6 @@ function bindEvents() {
       document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id==='view-'+btn.dataset.tab));
       render();
     });
-  });
-
-  document.getElementById('funil-view-toggle').addEventListener('click', e => {
-    const btn = e.target.closest('.toggle-btn');
-    if (!btn) return;
-    STATE.funilView = btn.dataset.funilview;
-    document.querySelectorAll('#funil-view-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
-    if (STATE.activeTab==='funil') render();
-  });
-
-  document.getElementById('funil-comp-toggle').addEventListener('click', e => {
-    const btn = e.target.closest('.toggle-btn');
-    if (!btn) return;
-    STATE.funilCompMode = btn.dataset.compmode;
-    document.querySelectorAll('#funil-comp-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
-    if (STATE.activeTab==='funil') render();
   });
 
   document.getElementById('leads-toggle').addEventListener('click', e => {
@@ -2951,36 +2961,51 @@ function bindEvents() {
     if (STATE.activeTab==='vendas') render();
   });
 
-  document.getElementById('view-pivot').addEventListener('click', e => {
+  document.getElementById('funil-view-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.funilView = btn.dataset.funilview;
+    document.querySelectorAll('#funil-view-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='funil') render();
+  });
+
+  document.getElementById('funil-comp-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.funilCompMode = btn.dataset.compmode;
+    document.querySelectorAll('#funil-comp-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='funil') render();
+  });
+
+  // Tabela Dinâmica — delegação de cliques (parâmetros, granularidade, expandir/recolher)
+  const pivotView = document.getElementById('view-pivot');
+  if (pivotView) pivotView.addEventListener('click', e => {
     const param = e.target.closest('.pv-param');
     if (param) { togglePivotDim(param.dataset.dim); return; }
-
     const gran = e.target.closest('.pv-gran-btn');
     if (gran) { STATE.pivotDateGran = gran.dataset.gran; STATE.pivotExpanded.clear(); renderPivot(); return; }
-
-    const sort = e.target.closest('.pv-sort');
-    if (sort) {
-      const col = sort.dataset.sort;
-      if (STATE.pivotSortCol === col) STATE.pivotSortDir = STATE.pivotSortDir === 'desc' ? 'asc' : 'desc';
-      else { STATE.pivotSortCol = col; STATE.pivotSortDir = 'desc'; }
-      renderPivot();
-      return;
-    }
-
     const tog = e.target.closest('.pv-toggle');
     if (tog) {
       const p = STATE.pivotPaths[+tog.dataset.pid];
       if (p == null) return;
-      if (STATE.pivotExpanded.has(p)) STATE.pivotExpanded.delete(p);
-      else STATE.pivotExpanded.add(p);
-      renderPivotTable();
+      if (STATE.pivotExpanded.has(p)) STATE.pivotExpanded.delete(p); else STATE.pivotExpanded.add(p);
+      renderPivotArea();
+      return;
+    }
+    const sortTh = e.target.closest('.pv-sortable');
+    if (sortTh) {
+      const col = sortTh.dataset.sortcol;
+      if (STATE.pivotSort.col === col) STATE.pivotSort.dir = STATE.pivotSort.dir === 'desc' ? 'asc' : 'desc';
+      else STATE.pivotSort = { col, dir: 'desc' };
+      renderPivotArea();
+      return;
     }
   });
 
   document.getElementById('reunioes-time-toggle').addEventListener('click', e => {
     const btn = e.target.closest('.toggle-btn');
     if (!btn) return;
-    STATE.reunioesTimeMode = btn.dataset.timemode;
+    STATE.reunioesTimeMode = btn.dataset.rtimemode;
     document.querySelectorAll('#reunioes-time-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
     if (STATE.activeTab==='reunioes') render();
   });
@@ -2988,28 +3013,27 @@ function bindEvents() {
   document.getElementById('reunioes-breakdown-toggle').addEventListener('click', e => {
     const btn = e.target.closest('.toggle-btn');
     if (!btn) return;
-    STATE.reunioesBreakdown = btn.dataset.breakdown;
+    STATE.reunioesBreakdown = btn.dataset.rbreakdown;
     document.querySelectorAll('#reunioes-breakdown-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
     if (STATE.activeTab==='reunioes') render();
   });
 
-  // Forecast: chips de Etapa do Negócio (toggle por índice — evita depender de string em data-*)
-  document.getElementById('view-forecast').addEventListener('click', e => {
-    const chip = e.target.closest('.forecast-etapa-chip');
-    if (!chip) return;
-    const et = FORECAST_ETAPAS[+chip.dataset.idx];
-    if (et == null) return;
-    if (STATE.forecastEtapa.has(et)) STATE.forecastEtapa.delete(et);
-    else STATE.forecastEtapa.add(et);
-    if (STATE.activeTab==='forecast') render();
-  });
-
-  // Forecast: fatores de conversão editáveis (recalcula as tabelas/cards na hora, sem refazer os chips)
+  // Forecast: fatores de conversão editáveis (recalcula tabelas na hora, sem mexer nos inputs)
   [['f-fac-alta','alta'],['f-fac-media','media'],['f-fac-baixa','baixa']].forEach(([id,key]) => {
-    document.getElementById(id).addEventListener('input', e => {
+    const inp = document.getElementById(id);
+    if (inp) inp.addEventListener('input', e => {
       STATE.forecastFactors[key] = e.target.value === '' ? 0 : Number(e.target.value);
       if (STATE.activeTab === 'forecast') computeAndRenderForecast();
     });
+  });
+  // Forecast: filtro de Etapa do negócio (chips toggle)
+  const fcView = document.getElementById('view-forecast');
+  if (fcView) fcView.addEventListener('click', e => {
+    const chip = e.target.closest('.forecast-etapa-chip');
+    if (!chip) return;
+    const et = chip.dataset.etapa;
+    if (STATE.forecastEtapa.has(et)) STATE.forecastEtapa.delete(et); else STATE.forecastEtapa.add(et);
+    renderForecast();
   });
 }
 
@@ -3026,7 +3050,7 @@ async function init() {
   if (ok) {
     detectDateFormat();
     detectReuniaoStatus();
-    detectTipoReuniao();
+    detectSdrCloserColumns();
     populateAllFilters();
     document.getElementById('view-funil').classList.add('active');
     document.getElementById('btn-refresh').disabled = false;
@@ -3038,12 +3062,12 @@ async function refreshData() {
   const btn = document.getElementById('btn-refresh');
   btn.disabled = true;
   btn.textContent = '↻ Atualizando...';
-  RAW.leads = []; RAW.reunioes = []; RAW.vendas = []; RAW.metaCaptacao = []; RAW.metaLeads = []; RAW.negociacao = [];
+  RAW.leads = []; RAW.reunioes = []; RAW.vendas = []; RAW.metaCaptacao = []; RAW.metaLeads = [];
   const ok = await loadData();
   if (ok) {
     detectDateFormat();
     detectReuniaoStatus();
-    detectTipoReuniao();
+    detectSdrCloserColumns();
     populateAllFilters();
     render();
   }
