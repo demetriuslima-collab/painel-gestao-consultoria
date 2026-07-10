@@ -322,6 +322,9 @@ tr:hover td{background:#FAFAFA}
     <button class="tab-btn" data-tab="vendas">
       <span class="nav-icon">$</span> Diária de Vendas
     </button>
+    <button class="tab-btn" data-tab="tombamento">
+      <span class="nav-icon">⇄</span> Tombamento
+    </button>
     <button class="tab-btn" data-tab="reunioes">
       <span class="nav-icon">◷</span> Reuniões
     </button>
@@ -545,18 +548,116 @@ tr:hover td{background:#FAFAFA}
     </div>
   </section>
 
+  <section class="view" id="view-tombamento">
+    <div class="view-filter-bar">
+      <div class="filter-group">
+        <label class="filter-label">Base</label>
+        <div class="toggle-group" id="tomb-scope-toggle">
+          <button class="toggle-btn active" data-scope="vendas">Base Vendas</button>
+          <button class="toggle-btn" data-scope="todos">Todos os Tombamentos</button>
+          <button class="toggle-btn" data-scope="alertas">⚠ Alertas</button>
+        </div>
+      </div>
+      <div class="date-presets">
+        <span class="date-presets-label">Data Implantação — Atalhos</span>
+        <div class="date-presets-btns">
+          <button class="preset-btn" onclick="applyTombDatePreset('ontem')">Ontem</button>
+          <button class="preset-btn" onclick="applyTombDatePreset('7dias')">Últ. 7 dias</button>
+          <button class="preset-btn" onclick="applyTombDatePreset('mes')">Mês atual</button>
+          <button class="preset-btn" onclick="applyTombDatePreset('mespassado')">Mês passado</button>
+          <button class="preset-btn" onclick="applyTombDatePreset('30dias')">Últ. 30 dias</button>
+          <button class="preset-btn" onclick="applyTombDatePreset('3meses')">Últ. 3 meses</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Filtro Data Implantação — De</label>
+        <input type="date" class="filter-input" id="f-tdi">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Até</label>
+        <input type="date" class="filter-input" id="f-tdf">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="tomb-card-title">Tombamentos — Resumo</div>
+          <div class="card-sub" id="tomb-card-sub">PL implantado e valor por data de implantação</div>
+        </div>
+        <div class="toggle-group" id="tomb-breakdown-toggle">
+          <button class="toggle-btn active" data-breakdown="resumo">Resumo</button>
+          <button class="toggle-btn" data-breakdown="origem">Origem</button>
+          <button class="toggle-btn" data-breakdown="deal_utm_source">Source</button>
+          <button class="toggle-btn" data-breakdown="funil">Funil</button>
+          <button class="toggle-btn" data-breakdown="estrategia">Estratégia</button>
+          <button class="toggle-btn" data-breakdown="fonte_original_pipe">Fonte Orig.</button>
+          <button class="toggle-btn" data-breakdown="closer_responsavel">Closer</button>
+        </div>
+      </div>
+      <div id="tomb-tbl-area"></div>
+    </div>
+    <div class="card" id="tomb-chart-card">
+      <div class="card-head">
+        <div class="card-title" id="tomb-chart-title">PL Implantado Mensal (R$)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="toggle-group" id="tomb-metric-toggle">
+            <button class="toggle-btn active" data-metric="pl">PL Implantado</button>
+            <button class="toggle-btn" data-metric="valor">Valor (PL × Taxa)</button>
+          </div>
+          <div class="toggle-group" id="tomb-time-toggle">
+            <button class="toggle-btn" data-timemode="dia">Diário</button>
+            <button class="toggle-btn active" data-timemode="mes">Mensal</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="tombamento-chart"></canvas></div>
+    </div>
+  </section>
+
   <section class="view" id="view-cohort">
     <div class="card">
       <div class="card-head">
         <div>
-          <div class="card-title">Análise de Cohort por Safra</div>
-          <div class="card-sub">Conversão agrupada pelo mês de criação do lead</div>
+          <div class="card-title" id="cohort-card-title">Análise de Cohort por Safra</div>
+          <div class="card-sub" id="cohort-card-sub">Conversão agrupada pelo mês de criação do lead</div>
+        </div>
+        <div class="toggle-group" id="cohort-view-toggle">
+          <button class="toggle-btn active" data-cohortview="leads">Leads → Vendas</button>
+          <button class="toggle-btn" data-cohortview="tombamento">Vendas → Tombamento</button>
         </div>
       </div>
       <div class="cohort-scroll">
         <table class="cohort-tbl">
           <thead id="cohort-head"></thead>
           <tbody id="cohort-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="cohort-valor-card" style="display:none">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="cohort-valor-title">Cohort de Tombamento — Valor (PL × Taxa)</div>
+          <div class="card-sub">Valor (PL implantado × taxa de adm, calculado no dash) por safra de venda × mês de implantação</div>
+        </div>
+      </div>
+      <div class="cohort-scroll">
+        <table class="cohort-tbl">
+          <thead id="cohort-valor-head"></thead>
+          <tbody id="cohort-valor-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="cohort-pl-card" style="display:none">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Cohort de Tombamento — PL (Validado → Implantado)</div>
+          <div class="card-sub">Quanto do patrimônio validado vendido em cada safra já virou PL implantado (% = implantado ÷ validado)</div>
+        </div>
+      </div>
+      <div class="cohort-scroll">
+        <table class="cohort-tbl">
+          <thead id="cohort-pl-head"></thead>
+          <tbody id="cohort-pl-body"></tbody>
         </table>
       </div>
     </div>
@@ -745,12 +846,12 @@ const BASE_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq
 const sheetURL  = name => BASE_URL + encodeURIComponent(name) + '&_t=' + Date.now();
 
 const PALETTE      = ['#C82526','#2D2D2D','#d97706','#7c3aed','#0891b2','#16a34a','#ea580c','#9333ea','#65a30d','#db2777'];
-const FUNNEL_CLR   = ['#2D2D2D','#6B3333','#C82526','#991B1B'];
+const FUNNEL_CLR   = ['#2D2D2D','#6B3333','#C82526','#991B1B','#5A0D10'];
 
 // ================================================================
 // RUNTIME STATE
 // ================================================================
-const RAW = { leads:[], reunioes:[], vendas:[], metaCaptacao:[], metaLeads:[], negociacao:[] };
+const RAW = { leads:[], reunioes:[], vendas:[], metaCaptacao:[], metaLeads:[], negociacao:[], tombamentos:[] };
 
 // Global filter selections
 const SEL = {
@@ -769,6 +870,7 @@ const F = {   // active filter values
   di: null, df: null,   // data_criacao range
   vdi: null, vdf: null, // data_venda range (vendas view only)
   rai: null, raf: null, // data_da_atividade range (aba Reuniões only)
+  tdi: null, tdf: null, // data_de_implantacao range (aba Tombamento only)
 };
 
 const STATE = {
@@ -779,6 +881,11 @@ const STATE = {
   leadsTimeMode:  'dia',        // 'dia' | 'mes' — agrupamento do gráfico de leads
   vendasSubview:  'captacao',
   vendasTimeMode: 'dia',        // 'dia' | 'mes' — agrupamento do gráfico de vendas
+  tombTimeMode:   'mes',        // 'dia' | 'mes' — agrupamento do gráfico de tombamento
+  tombMetric:     'pl',         // 'pl' | 'valor' — variável do gráfico de tombamento
+  tombBreakdown:  'resumo',     // 'resumo' | 'origem' | campo da venda — estratificação da aba Tombamento
+  tombScope:      'vendas',     // 'vendas' (match com aba Vendas) | 'todos' (base completa) | 'alertas' (qualidade de dados)
+  cohortView:        'leads',   // 'leads' (Leads→Vendas) | 'tombamento' (Vendas→Tombamento: Qtd + Valor + PL)
   reunioesBreakdown: 'tipo_reuniao', // empilhamento do gráfico de reuniões
   reunioesTimeMode:  'mes',          // 'dia' | 'semana' | 'mes'
   reuniaoCountMode:  'negocio',      // 'negocio' | 'email' | 'emailtipo' — como contar reuniões (funil/pivot/aba)
@@ -800,6 +907,7 @@ let REUNIAO_STATUS_KEY = null; // column name that holds "concluido"
 let DATE_FMT = null;           // 'MDY' or 'DMY' — detected from leads/reunioes
 let VENDA_DATE_FMT = null;     // 'MDY' or 'DMY' — detected specifically from vendas
 let META_DATE_FMT  = null;     // 'MDY' or 'DMY' — detectado das abas de Metas (costumam ser DMY/BR)
+let TOMB_DATE_FMT  = null;     // 'MDY' or 'DMY' — detectado da coluna data_de_implantacao (tombamentos)
 // Detecção defensiva das colunas SDR/Closer (Fase 3): só filtram a base onde a coluna existir.
 let SDR_IN_LEADS = false;        // SDR presente na base de leads
 let SDR_IN_REUNIOES = false;     // SDR presente na base de reuniões
@@ -839,6 +947,8 @@ const COL_ALIASES = {
   closer_responsavel:  ['adv_aut_closer_responsavel','closer_responsavel','closer'],
   sdr_responsavel:     ['adv_aut_sdr_responsavel','sdr_responsavel','sdr'],
   tipo_reuniao:        ['tipo_de_chamada_e_reuniao','tipo_reuniao','tipo_de_reuniao','tipo_da_reuniao'],
+  // Aba tombamentos: coluna renomeada na revisão de 2026-07 ("PL na data de implantação").
+  pl_total_implantado_via_api: ['pl_total_implantado_via_api','pl_na_data_de_implantacao','pl_total_implantado'],
 };
 
 // Build reverse lookup once: normalizedRealKey → canonicalKey
@@ -941,6 +1051,17 @@ function detectDateFormat() {
     if (b > 12) { META_DATE_FMT = 'MDY'; break; }
   }
   if (!META_DATE_FMT) META_DATE_FMT = 'DMY'; // fallback: Brazilian (metas preenchidas manualmente)
+
+  // Tombamentos: coluna data_de_implantacao (observada em DD/MM/YYYY). Detecta independente.
+  for (const row of (RAW.tombamentos || [])) {
+    const s = (row.data_de_implantacao||'').trim().replace(/\s+\d{1,2}:\d{2}.*$/,'').trim();
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) continue;
+    const a = +m[1], b = +m[2];
+    if (a > 12) { TOMB_DATE_FMT = 'DMY'; break; }
+    if (b > 12) { TOMB_DATE_FMT = 'MDY'; break; }
+  }
+  if (!TOMB_DATE_FMT) TOMB_DATE_FMT = 'DMY'; // fallback: Brazilian
 }
 
 // Normalize value for comparison: lowercase + remove accents
@@ -1005,6 +1126,24 @@ function parseNum(s) {
   return parseFloat(s.replace(/[^0-9.]/g,'')) || 0;
 }
 
+// Taxa de administração (aba tombamentos): "1,00%" → 0.01 ; "0,80%" → 0.008.
+// Trata decimal com vírgula (BR) ou ponto (US). Retorna fração (percentual/100).
+function parseTaxa(s) {
+  if (!s) return 0;
+  let t = String(s).replace(/[%\s]/g,'').trim();
+  if (!t) return 0;
+  if (t.includes(',')) t = t.replace(/\./g,'').replace(',','.'); // vírgula = decimal BR
+  const n = parseFloat(t);
+  return isFinite(n) ? n/100 : 0;
+}
+// PL na data de implantação (aba tombamentos revisada em 2026-07): valor em REAIS
+// puros, sem separadores (ex.: "4989768" = R$ 4.989.768). Antes da revisão a coluna
+// vinha com agrupadores e 3 casas decimais embutidas — se a planilha voltar a esse
+// formato, os números inflarão ~1000×; validar magnitude (mediana ~R$ 600k por cliente).
+function parsePLImplantado(s) { return parseNum(s); }
+// Valor do tombamento = PL implantado × taxa de administração.
+function tombValor(row) { return parsePLImplantado(row.pl_total_implantado_via_api) * parseTaxa(row.taxa_de_adm); }
+
 const fmtN   = n => (n||0).toLocaleString('pt-BR');
 const parsePatrimonio = s => { const n = parseNum(s); return n > 0 && n < 10000 ? n * 1000 : n; };
 const fmtR$  = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n||0);
@@ -1056,6 +1195,9 @@ async function loadData() {
     // Base Negociação (aba Forecast) — defensiva: se a aba não existir, segue sem ela.
     try { RAW.negociacao = await fetchSheet('Negociação'); }
     catch(e) { RAW.negociacao = []; console.warn('Base Negociação não carregada:', e); }
+    // Base Tombamentos — defensiva: se a aba não existir, segue sem ela (etapa Tombados não aparece).
+    try { RAW.tombamentos = await fetchSheet('tombamentos'); }
+    catch(e) { RAW.tombamentos = []; console.warn('Base tombamentos não carregada:', e); }
     setStatus('ok', `${leads.length} leads · ${reunioes.length} reuniões · ${vendas.length} vendas`);
     return true;
   } catch(e) {
@@ -1270,6 +1412,68 @@ function filteredNegociacao() {
   return rows;
 }
 
+// Tombados = contatos da base "tombamentos" cujo email casa com uma VENDA filtrada.
+// Respeita os filtros globais indiretamente (via filteredVendas). Deduplicado por email.
+function filteredTombados() {
+  if (!RAW.tombamentos || !RAW.tombamentos.length) return [];
+  const vendasEmails = new Set(
+    filteredVendas(false).map(v => (v.email || '').toLowerCase().trim()).filter(Boolean)
+  );
+  const seen = new Set();
+  const out  = [];
+  RAW.tombamentos.forEach(t => {
+    const e = (t.email || '').toLowerCase().trim();
+    if (e && vendasEmails.has(e) && !seen.has(e)) { seen.add(e); out.push(t); }
+  });
+  return out;
+}
+
+// Aba Tombamento: linhas com data de implantação válida dentro do filtro específico
+// (F.tdi/F.tdf sobre data_de_implantacao). Retorna [{row, d, venda}].
+// Regra global (Rafael, 2026-07-10): em TODO o dashboard, só entram tombamentos cujo
+// email aparece na aba Vendas. O match aqui é com as vendas JÁ FILTRADAS — assim a
+// barra de filtros do dash (data de criação + multiselects) vale nesta aba como nas
+// demais. `venda` = primeira venda do email (por data), fonte das dimensões
+// (source/funil/closer/origem...) para as estratificações.
+function filteredTombamentos() {
+  if (!RAW.tombamentos || !RAW.tombamentos.length) return [];
+  const todos = STATE.tombScope === 'todos';
+  // Escopo 'vendas' (padrão): match com as vendas FILTRADAS → barra de filtros vale.
+  // Escopo 'todos': base completa (única visão que inclui emails fora da aba Vendas);
+  // filtros globais não se aplicam — a venda (de RAW.vendas) entra só como fonte de
+  // dimensão quando existir, senão a linha estratifica como '(Sem venda)'.
+  const vendaDe = {}; // email -> { v, d } (primeira venda por data de contratação)
+  (todos ? RAW.vendas : filteredVendas(false)).forEach(v => {
+    const em = (v.email || '').toLowerCase().trim();
+    if (!em) return;
+    const d = parseDate(v.data_venda, VENDA_DATE_FMT);
+    const cur = vendaDe[em];
+    if (!cur || (d && (!cur.d || d < cur.d))) vendaDe[em] = { v, d };
+  });
+  return RAW.tombamentos
+    .map(r => {
+      const m = vendaDe[(r.email || '').toLowerCase().trim()];
+      return { row: r, d: parseDate(r.data_de_implantacao, TOMB_DATE_FMT), venda: m ? m.v : null };
+    })
+    .filter(x => x.d && (todos || x.venda)
+      && (!F.tdi || x.d >= F.tdi) && (!F.tdf || x.d <= F.tdf));
+}
+
+// Dimensões da estratificação da aba Tombamento — herdadas da venda casada por email.
+const TOMB_BREAKDOWNS = [
+  { key:'origem',              label:'Origem' },
+  { key:'deal_utm_source',     label:'Source' },
+  { key:'funil',               label:'Funil' },
+  { key:'estrategia',          label:'Estratégia' },
+  { key:'fonte_original_pipe', label:'Fonte Orig.' },
+  { key:'closer_responsavel',  label:'Closer' },
+];
+function tombDimValue(venda, key) {
+  if (!venda) return '(Sem venda)';
+  if (key === 'origem') return isOrigemBase(venda) ? 'Origem Base' : 'Origem Suno';
+  return (venda[key] || '').trim() || '(Vazio)';
+}
+
 // ================================================================
 // MULTI-SELECT COMPONENT
 // ================================================================
@@ -1386,12 +1590,21 @@ function populateAllFilters() {
   });
 }
 
+// Período de referência das metas: usa o filtro de data (se ativo), senão o mês atual.
+function metaPeriodo(diFilter, dfFilter) {
+  if (diFilter || dfFilter) {
+    return { ini: diFilter || new Date(1970,0,1), fim: dfFilter || new Date(2999,11,31,23,59,59,999) };
+  }
+  const today = new Date();
+  return { ini: new Date(today.getFullYear(), today.getMonth(), 1),
+           fim: new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999) };
+}
+
 function calcMetaCaptacao() {
   if (!RAW.metaCaptacao.length) return null;
   const today = new Date(); today.setHours(23,59,59,999);
   const ontem = new Date(today); ontem.setDate(ontem.getDate() - 1);
-  const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
+  const { ini, fim } = metaPeriodo(F.vdi, F.vdf); // meta de captação segue o filtro exclusivo de data de venda
 
   let metaMes=0, metaAteData=0, metaQtdMes=0, metaQtdAteData=0;
   RAW.metaCaptacao.forEach(m => {
@@ -1399,7 +1612,7 @@ function calcMetaCaptacao() {
     if (!d) return;
     const cap = parseNum(m.meta_de_captacao);
     const qtd = parseNum(m.meta_de_quantidade);
-    if (d >= mesStart && d <= mesEnd) {
+    if (d >= ini && d <= fim) {
       metaMes    += cap;
       metaQtdMes += qtd;
       if (d <= ontem) { metaAteData += cap; metaQtdAteData += qtd; }
@@ -1415,15 +1628,14 @@ function calcMetaLeads() {
   if (!RAW.metaLeads.length) return null;
   const today = new Date(); today.setHours(23,59,59,999);
   const ontem = new Date(today); ontem.setDate(ontem.getDate() - 1);
-  const mesStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const mesEnd   = new Date(today.getFullYear(), today.getMonth()+1, 0, 23,59,59,999);
+  const { ini, fim } = metaPeriodo(F.di, F.df); // meta de leads segue o filtro de criação
 
   const r = { metaMes:0, metaAteData:0, porFunil:{} };
   const funisCols = ['meta_aplicacao','meta_sessao_estrategica','meta_sessao_lmfrios'];
 
   RAW.metaLeads.forEach(m => {
     const d = parseDate(m.data, META_DATE_FMT);
-    if (!d || d < mesStart || d > mesEnd) return;
+    if (!d || d < ini || d > fim) return;
     r.metaMes += parseNum(m.meta_total_de_leads);
     if (d <= ontem) r.metaAteData += parseNum(m.meta_total_de_leads);
     funisCols.forEach(col => {
@@ -1520,6 +1732,26 @@ function applyReuniaoDatePreset(preset) {
   if (STATE.activeTab === 'reunioes') render();
 }
 
+// Preset de data de implantação — exclusivo da aba Tombamento (espelha o de vendas/reuniões)
+function applyTombDatePreset(preset) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let di, df;
+  if (preset === 'ontem')          { di = new Date(today); di.setDate(di.getDate() - 1); df = new Date(di); }
+  else if (preset === '7dias')     { di = new Date(today); di.setDate(di.getDate() - 6); df = new Date(today); }
+  else if (preset === 'mes')       { di = new Date(today.getFullYear(), today.getMonth(), 1); df = new Date(today); }
+  else if (preset === 'mespassado'){ di = new Date(today.getFullYear(), today.getMonth() - 1, 1); df = new Date(today.getFullYear(), today.getMonth(), 0); }
+  else if (preset === '30dias')    { di = new Date(today); di.setDate(di.getDate() - 29); df = new Date(today); }
+  else if (preset === '3meses')    { di = new Date(today.getFullYear(), today.getMonth() - 3, 1); df = new Date(today.getFullYear(), today.getMonth(), 0); }
+  const toInput = d => d.toISOString().slice(0, 10);
+  F.tdi = new Date(di.getTime());
+  F.tdf = new Date(df.getTime()); F.tdf.setHours(23, 59, 59);
+  document.getElementById('f-tdi').value = toInput(di);
+  document.getElementById('f-tdf').value = toInput(df);
+  document.querySelectorAll('#view-tombamento .preset-btn').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('onclick') === `applyTombDatePreset('${preset}')`));
+  if (STATE.activeTab === 'tombamento') render();
+}
+
 function clearFilters() {
   F.di = F.df = null;
   document.getElementById('f-di').value = '';
@@ -1551,15 +1783,19 @@ function renderFunilGeral() {
   const vendas     = filteredVendas(false);
 
   const nL = leads.length, nM = reunioes.length, nR = realizadas.length, nV = vendas.length;
+  const hasTomb = RAW.tombamentos && RAW.tombamentos.length > 0;
+  const nT = hasTomb ? filteredTombados().length : 0;
   const maxN = Math.max(nL, 1);
 
   // Metric cards
-  document.getElementById('funil-metrics').innerHTML = [
+  const cards = [
     { label:'Leads',              n:nL, sub:'', color:FUNNEL_CLR[0] },
     { label:'Reuniões Marcadas',  n:nM, sub:nL?fmtPct(nM/nL)+' dos leads':'—', color:FUNNEL_CLR[1] },
     { label:'Reuniões Realizadas',n:nR, sub:nM?fmtPct(nR/nM)+' das marcadas':'—', color:FUNNEL_CLR[2] },
     { label:'Vendas',             n:nV, sub:nR?fmtPct(nV/nR)+' das realizadas':'—', color:FUNNEL_CLR[3] },
-  ].map(m => `
+  ];
+  if (hasTomb) cards.push({ label:'Tombados', n:nT, sub:nV?fmtPct(nT/nV)+' das vendas':'—', color:FUNNEL_CLR[4] });
+  document.getElementById('funil-metrics').innerHTML = cards.map(m => `
     <div class="metric-card" style="border-left-color:${m.color}">
       <div class="metric-label">${m.label}</div>
       <div class="metric-value">${fmtN(m.n)}</div>
@@ -1574,6 +1810,7 @@ function renderFunilGeral() {
     { label:'Vendas',              n:nV },
   ];
   const rates = [null, nL?nM/nL:null, nM?nR/nM:null, nR?nV/nR:null];
+  if (hasTomb) { steps.push({ label:'Tombados', n:nT }); rates.push(nV?nT/nV:null); }
 
   const vis = document.getElementById('funil-visual');
   vis.innerHTML = '';
@@ -1605,12 +1842,14 @@ function renderFunilGeral() {
 
   const summary = document.createElement('div');
   summary.className = 'funnel-summary';
-  summary.innerHTML = [
+  const kpis = [
     { val:fmtPct(nL?nV/nL:null),  label:'Conversão Geral<br>Leads → Vendas',  color:FUNNEL_CLR[3] },
     { val:fmtPct(nL?nR/nL:null),  label:'% Realizadas<br>Leads → Realizadas', color:FUNNEL_CLR[2] },
     { val:fmtPct(rates[1]),        label:'Leads → Marcadas',                   color:FUNNEL_CLR[1] },
-    { val:fmtPct(rates[3]),        label:'Realizadas → Vendas',                color:FUNNEL_CLR[3] },
-  ].map(k => `
+    { val:fmtPct(nR?nV/nR:null),   label:'Realizadas → Vendas',                color:FUNNEL_CLR[3] },
+  ];
+  if (hasTomb) kpis.push({ val:fmtPct(nV?nT/nV:null), label:'Vendas → Tombados', color:FUNNEL_CLR[4] });
+  summary.innerHTML = kpis.map(k => `
     <div class="funnel-kpi">
       <div class="funnel-kpi-val" style="color:${k.color}">${k.val}</div>
       <div class="funnel-kpi-label">${k.label}</div>
@@ -2122,9 +2361,224 @@ function renderVendasChart(vendas) {
 }
 
 // ================================================================
+// RENDER: TOMBAMENTO (PL implantado / valor por data de implantação)
+// ================================================================
+function renderTombamento() {
+  const scope   = STATE.tombScope;
+  const alertas = scope === 'alertas';
+  document.getElementById('tomb-chart-card').style.display       = alertas ? 'none' : '';
+  document.getElementById('tomb-breakdown-toggle').style.display = alertas ? 'none' : '';
+  if (alertas) { renderTombAlertas(); return; }
+
+  const items = filteredTombamentos();
+  const bd    = STATE.tombBreakdown;
+
+  const rangeTxt = (F.tdi || F.tdf)
+    ? `${F.tdi ? F.tdi.toLocaleDateString('pt-BR') : 'início'} a ${F.tdf ? F.tdf.toLocaleDateString('pt-BR') : 'hoje'}`
+    : 'todo o período';
+  const sub = document.getElementById('tomb-card-sub');
+  if (sub) sub.textContent = scope === 'todos'
+    ? `TODOS os tombamentos — ${rangeTxt}. Única visão que inclui emails fora da aba Vendas; `
+      + `filtros do dash não se aplicam aqui. Sem venda correspondente, a linha estratifica como "(Sem venda)".`
+    : `PL implantado e valor por data de implantação — ${rangeTxt}. `
+      + `Filtros do dash valem aqui (match com as vendas filtradas); Valor = PL × Taxa (calculado no dash).`;
+
+  if (bd === 'resumo') renderTombamentoResumo(items);
+  else                 renderTombamentoBreakdownTbl(items, bd);
+  renderTombamentoChart(items);
+}
+
+// Alertas de qualidade da base tombamentos — calculados na BASE COMPLETA (RAW),
+// ignorando filtros: são indicadores de preenchimento da planilha, não do recorte.
+// Clientes = emails ÚNICOS (linhas repetidas do mesmo email não inflam a contagem);
+// linhas sem email são reportadas à parte. Categorias NÃO são exclusivas — a linha
+// "com alguma pendência" (união, cada linha conta 1×) dá o tamanho real da limpeza.
+function computeTombAlertas() {
+  const vendaEmails = new Set(RAW.vendas.map(v => (v.email || '').toLowerCase().trim()).filter(Boolean));
+  const foraEmails = new Set();
+  const a = { total:0, foraPLComEmail:0, foraSemDataLinhas:0, semEmailQtd:0, semEmailPL:0,
+              plVazioQtd:0, plSemDataQtd:0, plSemDataPL:0, taxaAltaQtd:0, pendentes:0 };
+  RAW.tombamentos.forEach(r => {
+    const em      = (r.email || '').toLowerCase().trim();
+    const plStr   = (r.pl_total_implantado_via_api || '').trim();
+    const pl      = parsePLImplantado(plStr);
+    const dataStr = (r.data_de_implantacao || '').trim();
+    const d       = parseDate(r.data_de_implantacao, TOMB_DATE_FMT);
+    // linha totalmente vazia (artefato de planilha) não conta em nada
+    if (!em && !(r.nome || '').trim() && !plStr && !dataStr) return;
+    a.total++;
+    const fora      = !em || !vendaEmails.has(em);
+    const plVazio   = !plStr || pl === 0;
+    const plSemData = pl > 0 && !d;
+    const taxaAlta  = parseTaxa(r.taxa_de_adm) > 0.015;
+    if (fora) {
+      if (em) { foraEmails.add(em); a.foraPLComEmail += pl; }
+      else    { a.semEmailQtd++;    a.semEmailPL     += pl; }
+      if (!d) a.foraSemDataLinhas++;
+    }
+    if (plVazio)   a.plVazioQtd++;
+    if (plSemData) { a.plSemDataQtd++; a.plSemDataPL += pl; }
+    if (taxaAlta)  a.taxaAltaQtd++;
+    if (fora || plVazio || plSemData || taxaAlta) a.pendentes++;
+  });
+  a.foraClientes = foraEmails.size;
+  return a;
+}
+
+function renderTombAlertas() {
+  const a = computeTombAlertas();
+  document.getElementById('tomb-card-title').textContent = 'Alertas — Qualidade da Base de Tombamentos';
+  const sub = document.getElementById('tomb-card-sub');
+  if (sub) sub.textContent = `Calculado sobre a base completa (${fmtN(a.total)} linhas), ignorando filtros. `
+    + `As categorias não são exclusivas (a mesma linha pode ter mais de uma pendência) — a última linha dá o total sem dupla contagem.`;
+  const linha = (alerta, qtd, pl, hint) => `<tr>
+      <td>${alerta}${hint ? `<div style="font-size:11px;color:var(--text-muted)">${hint}</div>` : ''}</td>
+      <td class="num" style="font-weight:700;color:${qtd > 0 ? 'var(--danger)' : 'var(--success)'}">${fmtN(qtd)}</td>
+      <td class="num">${pl === null ? '—' : fmtR$(pl)}</td>
+    </tr>`;
+  document.getElementById('tomb-tbl-area').innerHTML = `
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Alerta</th><th class="num">Qtd</th><th class="num">PL Implantado</th></tr></thead>
+    <tbody>
+      ${linha('Clientes tombados que não estão na aba Vendas', a.foraClientes, a.foraPLComEmail,
+        `Emails únicos sem correspondência na aba Vendas (PL soma todas as linhas desses emails). Aparecem só em "Todos os Tombamentos" — e apenas as linhas com data válida${a.foraSemDataLinhas ? `; ${fmtN(a.foraSemDataLinhas)} linha(s) fora de Vendas sem data não aparecem em nenhuma visão` : ''}.`)}
+      ${linha('Linhas sem email preenchido', a.semEmailQtd, a.semEmailPL,
+        'Impossível identificar o cliente e casar com Vendas.')}
+      ${linha('PL em branco ou zerado', a.plVazioQtd, null,
+        'Cliente tombado sem patrimônio lançado na planilha.')}
+      ${linha('PL preenchido mas sem data de implantação', a.plSemDataQtd, a.plSemDataPL,
+        'Data vazia ou inválida — o PL existe mas não entra nas visões por data.')}
+      ${linha('Taxa de adm. acima de 1,5% (verificar)', a.taxaAltaQtd, null,
+        'Taxa máxima esperada é 1% — provável erro de digitação.')}
+      <tr class="tr-total"><td>Linhas com alguma pendência (cada linha conta 1×)</td>
+        <td class="num">${fmtN(a.pendentes)}</td><td class="num">—</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+function renderTombamentoResumo(items) {
+  const rows     = items.map(x => x.row);
+  const qtd      = rows.length;
+  const comPL    = rows.filter(r => parsePLImplantado(r.pl_total_implantado_via_api) > 0);
+  const totPL    = rows.reduce((s,r) => s + parsePLImplantado(r.pl_total_implantado_via_api), 0);
+  const totValor = rows.reduce((s,r) => s + tombValor(r), 0);
+  const plMed    = comPL.length ? totPL / comPL.length : 0;
+  const taxas    = rows.map(r => parseTaxa(r.taxa_de_adm)).filter(t => t > 0);
+  const taxaMed  = taxas.length ? taxas.reduce((a,b)=>a+b,0) / taxas.length : 0;
+
+  document.getElementById('tomb-card-title').textContent = 'Tombamentos — Resumo';
+  document.getElementById('tomb-tbl-area').innerHTML = `
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Métrica</th><th class="num">Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Tombamentos (com data)</td><td class="num">${fmtN(qtd)}</td></tr>
+      <tr><td>Com PL implantado &gt; 0</td><td class="num">${fmtN(comPL.length)}</td></tr>
+      <tr><td>PL Total Implantado</td><td class="num">${fmtR$(totPL)}</td></tr>
+      <tr><td>Valor Total (PL × Taxa)</td><td class="num">${fmtR$(totValor)}</td></tr>
+      <tr><td>PL Médio (dos com PL)</td><td class="num">${fmtR$(plMed)}</td></tr>
+      <tr><td>Taxa de Adm. Média</td><td class="num">${fmtPct(taxaMed)}</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+// Tabela estratificada (espelha renderVendasBreakdown): PL, Valor e Qtd por valor da dimensão.
+function renderTombamentoBreakdownTbl(items, key) {
+  const dim = TOMB_BREAKDOWNS.find(b => b.key === key) || TOMB_BREAKDOWNS[0];
+  const groups = {};
+  items.forEach(({ row, venda }) => {
+    const k = tombDimValue(venda, key);
+    if (!groups[k]) groups[k] = { pl:0, val:0, qtd:0 };
+    groups[k].pl  += parsePLImplantado(row.pl_total_implantado_via_api);
+    groups[k].val += tombValor(row);
+    groups[k].qtd += 1;
+  });
+  const rows   = Object.entries(groups).sort((a,b) => b[1].pl - a[1].pl);
+  const totPL  = rows.reduce((s,[,g]) => s + g.pl, 0);
+  const totVal = rows.reduce((s,[,g]) => s + g.val, 0);
+  const totQtd = rows.reduce((s,[,g]) => s + g.qtd, 0);
+  document.getElementById('tomb-card-title').textContent = `Tombamentos por ${dim.label}`;
+  const body = rows.map(([k,g]) => `<tr>
+      <td>${esc(k)}</td>
+      <td class="num">${fmtR$(g.pl)}</td>
+      <td class="num">${fmtPct(totPL ? g.pl/totPL : null)}</td>
+      <td class="num">${fmtR$(g.val)}</td>
+      <td class="num">${fmtN(g.qtd)}</td>
+      <td class="num">${fmtR$(g.qtd ? g.pl/g.qtd : 0)}</td>
+    </tr>`).join('');
+  document.getElementById('tomb-tbl-area').innerHTML = `
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>${esc(dim.label)}</th><th class="num">PL Implantado</th><th class="num">% do PL</th><th class="num">Valor (PL × Taxa)</th><th class="num">Qtd</th><th class="num">PL Médio</th></tr></thead>
+    <tbody>
+      ${body}
+      <tr class="tr-total"><td>Total</td><td class="num">${fmtR$(totPL)}</td><td class="num">100%</td><td class="num">${fmtR$(totVal)}</td><td class="num">${fmtN(totQtd)}</td><td class="num">${fmtR$(totQtd ? totPL/totQtd : 0)}</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+function renderTombamentoChart(items) {
+  destroyChart('tomb');
+  const mode   = STATE.tombTimeMode;
+  const metric = STATE.tombMetric;
+  const bd     = STATE.tombBreakdown;
+  const per    = mode === 'mes' ? 'Mensal' : 'Diário';
+  const label  = metric === 'valor' ? 'Valor (PL × Taxa)' : 'PL Implantado';
+  const dim    = bd !== 'resumo' ? (TOMB_BREAKDOWNS.find(b => b.key === bd) || null) : null;
+  document.getElementById('tomb-chart-title').textContent =
+    dim ? `${label} ${per} por ${dim.label} (R$)` : `${label} ${per} (R$)`;
+  if (!items.length) return;
+  const { labels, bucketOf } = buildTimeAxis(items.map(x=>x.d), F.tdi, F.tdf, mode);
+  if (!labels.length) return;
+
+  const valOf = metric === 'valor'
+    ? (r => tombValor(r))
+    : (r => parsePLImplantado(r.pl_total_implantado_via_api));
+
+  let datasets;
+  if (dim) {
+    // Empilhado por valor da dimensão (herdada da venda) — espelha renderVendasBreakdownChart.
+    const totByVal = {};
+    items.forEach(({ row, venda }) => { const v = tombDimValue(venda, bd); totByVal[v] = (totByVal[v]||0) + valOf(row); });
+    const vals = Object.entries(totByVal).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
+    const dm = {}; labels.forEach(l => { dm[l] = {}; });
+    items.forEach(({ d, row, venda }) => {
+      const l = bucketOf(d); if (!dm[l]) return;
+      const v = tombDimValue(venda, bd);
+      if (vals.includes(v)) dm[l][v] = (dm[l][v]||0) + valOf(row);
+    });
+    datasets = vals.map((v,i) => ({ label:v, data:labels.map(l=>dm[l][v]||0), backgroundColor:PALETTE[i % PALETTE.length], stack:'s' }));
+  } else {
+    const dm = {}; labels.forEach(l => dm[l] = 0);
+    items.forEach(({ d, row }) => { const l = bucketOf(d); if (dm[l] === undefined) return; dm[l] += valOf(row); });
+    datasets = [{ label, data: labels.map(l => dm[l]), backgroundColor:'#C82526', stack:'s' }];
+  }
+
+  STATE.charts.tomb = new Chart(document.getElementById('tombamento-chart'), {
+    type:'bar', data:{ labels, datasets }, options: chartOpts(true),
+  });
+}
+
+// ================================================================
 // RENDER: COHORT
 // ================================================================
+// Dispatcher: cohort clássica (Leads→Vendas) ou cohort de tombamento (Vendas→Tombamento)
 function renderCohort() {
+  const tomb = STATE.cohortView === 'tombamento';
+  document.getElementById('cohort-valor-card').style.display = tomb ? '' : 'none';
+  document.getElementById('cohort-pl-card').style.display    = tomb ? '' : 'none';
+  const title = document.getElementById('cohort-card-title');
+  const sub   = document.getElementById('cohort-card-sub');
+  if (tomb) {
+    title.textContent = 'Cohort de Tombamento — Quantidade';
+    sub.textContent   = 'Safra = mês da venda; colunas = mês de implantação (match por email)';
+    renderCohortTombamento();
+  } else {
+    title.textContent = 'Análise de Cohort por Safra';
+    sub.textContent   = 'Conversão agrupada pelo mês de criação do lead';
+    renderCohortLeads();
+  }
+}
+
+function renderCohortLeads() {
   const leads  = filteredLeads();
   const vendas = filteredVendas(false);
 
@@ -2238,6 +2692,210 @@ function renderCohort() {
     <td class="cohort-cell num">—</td><td class="cohort-cell num">—</td><td class="cohort-cell num">—</td>
     <td class="cohort-cell num">${fmtN(totVendas)}</td>
     ${totalCells}
+  </tr>`;
+}
+
+// R$ compacto para células da cohort de valor (título da célula tem o valor cheio).
+// Limiares deslocados p/ baixo pelo passo de arredondamento: sem isso, 999.960
+// arredondaria para "R$ 1.000k" em vez de promover a unidade ("R$ 1M").
+function fmtR$c(v) {
+  const abs = Math.abs(v);
+  if (abs >= 999995e3) return 'R$ ' + (v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:2}) + 'B';
+  if (abs >= 99995e1)  return 'R$ ' + (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2}) + 'M';
+  if (abs >= 1e3)      return 'R$ ' + (v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1}) + 'k';
+  return 'R$ ' + v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
+
+// Cohort de Tombamento: safra = mês da VENDA (data_venda); colunas = mês da
+// IMPLANTAÇÃO (data_de_implantacao); match venda↔tombamento por email.
+// Quantidade: 1 por contato (dedup por email, conta na implantação mais antiga;
+// contatos com 2+ vendas entram na safra da primeira venda).
+// Valor (PL × taxa) e PL implantado: somam todas as linhas de tombamento do contato.
+// PL da tabela 3 é comparado ao patrimônio validado das vendas da safra (% Implantado).
+function renderCohortTombamento() {
+  const vendas = filteredVendas(false);
+
+  const safras = {};          // mk -> { vendas, patVal, tombQtd:{implMK:n}, tombVal:{implMK:R$}, tombPL:{implMK:R$} }
+  const emailToVendaMK = {};  // email -> mês da primeira venda
+  vendas.forEach(v => {
+    const d = parseDate(v.data_venda, VENDA_DATE_FMT);
+    if (!d) return;
+    const mk = monthKey(d);
+    if (!safras[mk]) safras[mk] = { vendas:0, patVal:0, tombQtd:{}, tombVal:{}, tombPL:{} };
+    safras[mk].vendas++;
+    safras[mk].patVal += parsePatrimonio(v.adv_patrimonio_validado || v.patrimonio_validado);
+    const em = (v.email||'').toLowerCase().trim();
+    if (em && (!(em in emailToVendaMK) || mk < emailToVendaMK[em])) emailToVendaMK[em] = mk;
+  });
+
+  const parsed = RAW.tombamentos
+    .map(r => ({ r, d: parseDate(r.data_de_implantacao, TOMB_DATE_FMT), em:(r.email||'').toLowerCase().trim() }))
+    .filter(x => x.d && x.em && (x.em in emailToVendaMK))
+    .sort((a,b) => a.d - b.d);
+  const seen = new Set();
+  let nPreSafra = 0;
+  parsed.forEach(({ r, d, em }) => {
+    const sMK = emailToVendaMK[em];
+    const s = safras[sMK];
+    if (!s) return;
+    const iMK = monthKey(d);
+    // Implantação anterior ao mês da venda: anomalia de dado (typo de data ou venda antiga
+    // fora do recorte) — fora da cohort, senão quebraria a diagonal e o % Tombado.
+    if (iMK < sMK) { nPreSafra++; return; }
+    if (!seen.has(em)) { seen.add(em); s.tombQtd[iMK] = (s.tombQtd[iMK]||0) + 1; }
+    s.tombVal[iMK] = (s.tombVal[iMK]||0) + tombValor(r);                                    // Valor = PL × taxa (coluna 'valor' da planilha é ignorada)
+    s.tombPL[iMK]  = (s.tombPL[iMK] ||0) + parsePLImplantado(r.pl_total_implantado_via_api); // PL implantado puro
+  });
+
+  // Reconciliação com o card "Tombados" do funil (que não exige data de implantação):
+  // sinaliza quantos tombados ficam fora da cohort por falta de data válida ou implantação pré-venda.
+  const nFunil = filteredTombados().length;
+  const fora   = nFunil - seen.size;
+  const subEl  = document.getElementById('cohort-card-sub');
+  if (subEl && fora > 0) subEl.textContent =
+    `Safra = mês da venda; colunas = mês de implantação (match por email) · ${fora} tombado(s) do funil fora da cohort (sem data de implantação válida${nPreSafra ? ' ou implantação anterior à venda' : ''})`;
+
+  const safraMKs = Object.keys(safras).sort();
+  const emptyMsg = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8">Sem dados para o período selecionado</td></tr>`;
+  if (!safraMKs.length) {
+    document.getElementById('cohort-head').innerHTML = '';
+    document.getElementById('cohort-body').innerHTML = emptyMsg;
+    document.getElementById('cohort-valor-head').innerHTML = '';
+    document.getElementById('cohort-valor-body').innerHTML = emptyMsg;
+    document.getElementById('cohort-pl-head').innerHTML = '';
+    document.getElementById('cohort-pl-body').innerHTML = emptyMsg;
+    return;
+  }
+
+  const allImplMKs = new Set();
+  safraMKs.forEach(mk => Object.keys(safras[mk].tombVal).forEach(m => allImplMKs.add(m)));
+  const allMKs = [...new Set([...safraMKs, ...allImplMKs])].sort();
+  const nowMK  = monthKey(new Date());
+
+  // ---------- Tabela 1: QUANTIDADE ----------
+  document.getElementById('cohort-head').innerHTML = `<tr>
+    <th class="cohort-fixed" style="text-align:left;min-width:72px">Safra (Venda)</th>
+    <th class="cohort-cell num">N. Vendas</th>
+    <th class="cohort-cell num">% Tombado</th>
+    <th class="cohort-cell num">% M0</th>
+    <th class="cohort-cell num">% M+1</th>
+    <th class="cohort-cell num">% M+2</th>
+    <th class="cohort-cell num">Total Tombados</th>
+    ${allMKs.map(m=>`<th class="cohort-cell num">${monthLabel(m)}</th>`).join('')}
+  </tr>`;
+
+  const colQtd = {}; allMKs.forEach(m => colQtd[m]=0);
+  let totV=0, totT=0;
+  const qtdRows = safraMKs.map(mk => {
+    const s    = safras[mk];
+    const nV   = s.vendas;
+    const m0mk = mk, m1mk = addMonths(mk,1), m2mk = addMonths(mk,2);
+    const m0   = s.tombQtd[m0mk]||0, m1 = s.tombQtd[m1mk]||0, m2 = s.tombQtd[m2mk]||0;
+    const tot  = Object.values(s.tombQtd).reduce((a,b)=>a+b,0);
+    totV += nV; totT += tot;
+    allMKs.forEach(m => { colQtd[m] += (s.tombQtd[m]||0); });
+    const cells = allMKs.map(m => {
+      if (m > nowMK && m > mk) return `<td class="cohort-cell cohort-fut">—</td>`;
+      const n = s.tombQtd[m]||0;
+      if (!n) return `<td class="cohort-cell num" style="color:#94a3b8">0</td>`;
+      const cls = m===m0mk ? 'cohort-m0' : 'cohort-has';
+      return `<td class="cohort-cell num ${cls}">${n}<span class="cohort-pct">${fmtPct(nV?n/nV:null)}</span></td>`;
+    }).join('');
+    return `<tr>
+      <td class="cohort-fixed">${monthLabel(mk)}</td>
+      <td class="cohort-cell num">${fmtN(nV)}</td>
+      <td class="cohort-cell num">${fmtPct(nV?tot/nV:null)}</td>
+      <td class="cohort-cell num">${m0mk<=nowMK?fmtPct(nV?m0/nV:null):'—'}</td>
+      <td class="cohort-cell num">${m1mk<=nowMK?fmtPct(nV?m1/nV:null):'—'}</td>
+      <td class="cohort-cell num">${m2mk<=nowMK?fmtPct(nV?m2/nV:null):'—'}</td>
+      <td class="cohort-cell num">${fmtN(tot)}</td>
+      ${cells}
+    </tr>`;
+  });
+  document.getElementById('cohort-body').innerHTML = qtdRows.join('') + `
+  <tr class="tr-total">
+    <td class="cohort-fixed">Total</td>
+    <td class="cohort-cell num">${fmtN(totV)}</td>
+    <td class="cohort-cell num">${fmtPct(totV?totT/totV:null)}</td>
+    <td class="cohort-cell num">—</td><td class="cohort-cell num">—</td><td class="cohort-cell num">—</td>
+    <td class="cohort-cell num">${fmtN(totT)}</td>
+    ${allMKs.map(m=>`<td class="cohort-cell num">${colQtd[m]>0?fmtN(colQtd[m]):'—'}</td>`).join('')}
+  </tr>`;
+
+  // ---------- Tabela 2: VALOR (PL × Taxa) ----------
+  document.getElementById('cohort-valor-head').innerHTML = `<tr>
+    <th class="cohort-fixed" style="text-align:left;min-width:72px">Safra (Venda)</th>
+    <th class="cohort-cell num">N. Vendas</th>
+    <th class="cohort-cell num">Total Valor</th>
+    ${allMKs.map(m=>`<th class="cohort-cell num">${monthLabel(m)}</th>`).join('')}
+  </tr>`;
+  const colVal = {}; allMKs.forEach(m => colVal[m]=0);
+  let totValAll = 0;
+  const valRows = safraMKs.map(mk => {
+    const s   = safras[mk];
+    const tot = Object.values(s.tombVal).reduce((a,b)=>a+b,0);
+    totValAll += tot;
+    allMKs.forEach(m => { colVal[m] += (s.tombVal[m]||0); });
+    const cells = allMKs.map(m => {
+      if (m > nowMK && m > mk) return `<td class="cohort-cell cohort-fut">—</td>`;
+      const v = s.tombVal[m]||0;
+      if (!v) return `<td class="cohort-cell num" style="color:#94a3b8">0</td>`;
+      const cls = m===mk ? 'cohort-m0' : 'cohort-has';
+      return `<td class="cohort-cell num ${cls}" title="${fmtR$(v)}">${fmtR$c(v)}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="cohort-fixed">${monthLabel(mk)}</td>
+      <td class="cohort-cell num">${fmtN(s.vendas)}</td>
+      <td class="cohort-cell num" title="${fmtR$(tot)}">${fmtR$c(tot)}</td>
+      ${cells}
+    </tr>`;
+  });
+  document.getElementById('cohort-valor-body').innerHTML = valRows.join('') + `
+  <tr class="tr-total">
+    <td class="cohort-fixed">Total</td>
+    <td class="cohort-cell num">${fmtN(totV)}</td>
+    <td class="cohort-cell num" title="${fmtR$(totValAll)}">${fmtR$c(totValAll)}</td>
+    ${allMKs.map(m=>`<td class="cohort-cell num" title="${fmtR$(colVal[m])}">${colVal[m]>0?fmtR$c(colVal[m]):'—'}</td>`).join('')}
+  </tr>`;
+
+  // ---------- Tabela 3: PL (Patrimônio Validado → PL Implantado) ----------
+  document.getElementById('cohort-pl-head').innerHTML = `<tr>
+    <th class="cohort-fixed" style="text-align:left;min-width:72px">Safra (Venda)</th>
+    <th class="cohort-cell num">Pat. Validado</th>
+    <th class="cohort-cell num">% Implantado</th>
+    <th class="cohort-cell num">Total PL Impl.</th>
+    ${allMKs.map(m=>`<th class="cohort-cell num">${monthLabel(m)}</th>`).join('')}
+  </tr>`;
+  const colPL = {}; allMKs.forEach(m => colPL[m]=0);
+  let totPat = 0, totPLAll = 0;
+  const plRows = safraMKs.map(mk => {
+    const s   = safras[mk];
+    const pv  = s.patVal;
+    const tot = Object.values(s.tombPL).reduce((a,b)=>a+b,0);
+    totPat += pv; totPLAll += tot;
+    allMKs.forEach(m => { colPL[m] += (s.tombPL[m]||0); });
+    const cells = allMKs.map(m => {
+      if (m > nowMK && m > mk) return `<td class="cohort-cell cohort-fut">—</td>`;
+      const v = s.tombPL[m]||0;
+      if (!v) return `<td class="cohort-cell num" style="color:#94a3b8">0</td>`;
+      const cls = m===mk ? 'cohort-m0' : 'cohort-has';
+      return `<td class="cohort-cell num ${cls}" title="${fmtR$(v)}">${fmtR$c(v)}<span class="cohort-pct">${fmtPct(pv?v/pv:null)}</span></td>`;
+    }).join('');
+    return `<tr>
+      <td class="cohort-fixed">${monthLabel(mk)}</td>
+      <td class="cohort-cell num" title="${fmtR$(pv)}">${fmtR$c(pv)}</td>
+      <td class="cohort-cell num">${fmtPct(pv?tot/pv:null)}</td>
+      <td class="cohort-cell num" title="${fmtR$(tot)}">${fmtR$c(tot)}</td>
+      ${cells}
+    </tr>`;
+  });
+  document.getElementById('cohort-pl-body').innerHTML = plRows.join('') + `
+  <tr class="tr-total">
+    <td class="cohort-fixed">Total</td>
+    <td class="cohort-cell num" title="${fmtR$(totPat)}">${fmtR$c(totPat)}</td>
+    <td class="cohort-cell num">${fmtPct(totPat?totPLAll/totPat:null)}</td>
+    <td class="cohort-cell num" title="${fmtR$(totPLAll)}">${fmtR$c(totPLAll)}</td>
+    ${allMKs.map(m=>`<td class="cohort-cell num" title="${fmtR$(colPL[m])}">${colPL[m]>0?fmtR$c(colPL[m]):'—'}</td>`).join('')}
   </tr>`;
 }
 
@@ -2618,12 +3276,34 @@ function destroyChart(key) {
 }
 
 function chartOpts(isCurrency) {
+  const fmt = isCurrency ? fmtR$ : fmtN;
+  // Total da barra = soma das séries empilhadas (exclui a linha de Meta)
+  const barTotal = (chart, di) => chart.data.datasets.filter(d => d.type !== 'line').reduce((s,d) => s + (d.data[di]||0), 0);
   return {
     responsive:true, maintainAspectRatio:false,
     plugins:{
       legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11} } },
-      tooltip:{ mode:'index', intersect:false,
-        callbacks: isCurrency ? { label: ctx => `${ctx.dataset.label}: ${fmtR$(ctx.raw)}` } : {} }
+      tooltip:{
+        mode:'index', intersect:false,
+        padding:11, boxPadding:5, usePointStyle:true,
+        titleFont:{size:12, weight:'700'}, bodyFont:{size:12}, bodySpacing:5,
+        footerFont:{size:12, weight:'700'}, footerMarginTop:8, footerColor:'#fff',
+        // Esconde as séries zeradas para o detalhamento ficar limpo
+        filter: item => item.parsed && item.parsed.y != null && item.parsed.y !== 0,
+        callbacks: {
+          label: ctx => {
+            const v = ctx.raw || 0;
+            if (ctx.dataset.type === 'line') return `${ctx.dataset.label}: ${fmt(v)}`; // Meta — sem %
+            const total = barTotal(ctx.chart, ctx.dataIndex);
+            const pct = total ? ` (${(v/total*100).toFixed(1)}%)` : '';
+            return `${ctx.dataset.label}: ${fmt(v)}${pct}`;
+          },
+          footer: items => {
+            if (!items.length) return '';
+            return `Total: ${fmt(barTotal(items[0].chart, items[0].dataIndex))}`;
+          }
+        }
+      }
     },
     scales:{
       x:{ stacked:true, grid:{display:false}, ticks:{ font:{size:11}, maxTicksLimit:31 } },
@@ -2641,6 +3321,7 @@ function render() {
     case 'funil':  renderFunil();  break;
     case 'leads':  renderLeads();  break;
     case 'vendas': renderVendas(); break;
+    case 'tombamento': renderTombamento(); break;
     case 'cohort': renderCohort(); break;
     case 'reunioes': renderReunioes(); break;
     case 'forecast': renderForecast(); break;
@@ -2911,6 +3592,19 @@ function bindEvents() {
     });
   });
 
+  // Filtro de data de implantação (aba Tombamento) — listeners próprios (start/end)
+  ['f-tdi','f-tdf'].forEach(id => {
+    const key = id === 'f-tdi' ? 'tdi' : 'tdf';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', e => {
+      const suffix = id === 'f-tdi' ? 'T00:00:00' : 'T23:59:59';
+      F[key] = e.target.value ? new Date(e.target.value + suffix) : null;
+      document.querySelectorAll('#view-tombamento .preset-btn').forEach(b => b.classList.remove('active'));
+      if (STATE.activeTab === 'tombamento') render();
+    });
+  });
+
   // Modo de contagem de reuniões (Negócio / Contato / Email+Tipo) — global
   document.getElementById('reuniao-count-toggle').addEventListener('click', e => {
     const btn = e.target.closest('.toggle-btn');
@@ -2960,6 +3654,47 @@ function bindEvents() {
     document.querySelectorAll('#vendas-time-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
     if (STATE.activeTab==='vendas') render();
   });
+
+  document.getElementById('tomb-scope-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.tombScope = btn.dataset.scope;
+    document.querySelectorAll('#tomb-scope-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='tombamento') render();
+  });
+
+  document.getElementById('tomb-breakdown-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.tombBreakdown = btn.dataset.breakdown;
+    document.querySelectorAll('#tomb-breakdown-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='tombamento') render();
+  });
+
+  document.getElementById('tomb-metric-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.tombMetric = btn.dataset.metric;
+    document.querySelectorAll('#tomb-metric-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='tombamento') render();
+  });
+
+  document.getElementById('tomb-time-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.tombTimeMode = btn.dataset.timemode;
+    document.querySelectorAll('#tomb-time-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='tombamento') render();
+  });
+
+  document.getElementById('cohort-view-toggle').addEventListener('click', e => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn) return;
+    STATE.cohortView = btn.dataset.cohortview;
+    document.querySelectorAll('#cohort-view-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b===btn));
+    if (STATE.activeTab==='cohort') render();
+  });
+
 
   document.getElementById('funil-view-toggle').addEventListener('click', e => {
     const btn = e.target.closest('.toggle-btn');

@@ -34,9 +34,9 @@ Não abrir `index.html` direto no browser — o PapaParse precisa de servidor HT
 const SHEET_ID = '1nBsorlQR29Ub_KFmr-QW2O2fi1lPKUuBIRvEKC1m8PU';
 ```
 
-Lê **6 abas** via endpoint CSV do Google Sheets: `Leads`, `Reuniões`, `Vendas`, `Meta Captação`, `Meta Leads` (as 5 obrigatórias, carregadas em `Promise.all`) e **`Negociação`** (base do Forecast, carregada de forma **defensiva** com `try/catch` próprio — se a aba não existir, o painel segue sem ela). A planilha precisa estar compartilhada como "qualquer pessoa com o link". O parâmetro `&_t=Date.now()` no `sheetURL` evita cache HTTP do browser.
+Lê **7 abas** via endpoint CSV do Google Sheets: `Leads`, `Reuniões`, `Vendas`, `Meta Captação`, `Meta Leads` (as 5 obrigatórias, carregadas em `Promise.all`), **`Negociação`** (base do Forecast) e **`tombamentos`** (base de Tombamento) — as duas últimas carregadas de forma **defensiva** com `try/catch` próprio: se a aba não existir, o painel segue sem ela (o Funil perde a etapa "Tombados" e a aba Tombamento fica vazia, sem quebrar). A planilha precisa estar compartilhada como "qualquer pessoa com o link". O parâmetro `&_t=Date.now()` no `sheetURL` evita cache HTTP do browser.
 
-`RAW = { leads, reunioes, vendas, metaCaptacao, metaLeads, negociacao }`.
+`RAW = { leads, reunioes, vendas, metaCaptacao, metaLeads, negociacao, tombamentos }`.
 
 ## Arquitetura do código (seções do script)
 
@@ -45,19 +45,21 @@ Números de linha mudam a cada edição — **buscar pelo nome da função**. Or
 - **AUTH** — `USERS`, `setupLogin()`, `logout()`
 - **CONFIG** — `SHEET_ID`, `sheetURL`, `PALETTE`, `FUNNEL_CLR`
 - **RUNTIME STATE** — `RAW` (6 bases), `SEL` (filtros globais multi-select), `F` (datas), `STATE` (aba ativa, sub-views, toggles de tempo, `forecastFactors`, `forecastEtapa`, `pivotDims/pivotSort/…`)
-- **Flags auto-detectadas** — `DATE_FMT`, `VENDA_DATE_FMT`, `META_DATE_FMT`, `REUNIAO_STATUS_KEY`, `SDR_IN_LEADS`, `SDR_IN_REUNIOES`, `CLOSER_IN_REUNIOES`, `TIPO_IN_REUNIOES`, `TIPO_REUNIAO_TOTAL`
-- **UTILITIES** — `normalizeKey`, `COL_ALIASES`, `normalizeRow`, `parseDate`, `parseNum`, `parsePatrimonio`, `monthKey/monthLabel`
-- **DATA LOADING** — `fetchSheet`, `loadData` (6ª aba `Negociação` defensiva)
-- **DETECÇÃO** — `detectDateFormat` (DATE/VENDA/META), `detectReuniaoStatus`, `detectSdrCloserColumns`
-- **FILTERING** — `passGlobal` (leads/reuniões), `passSdrCloser` (SDR/Closer/Tipo, defensivo), `passGlobalVendas`, `passGlobalNegociacao`, `emailsTipoRealizadas`, `filteredLeads/Reuniones/Vendas/Negociacao`
+- **Flags auto-detectadas** — `DATE_FMT`, `VENDA_DATE_FMT`, `META_DATE_FMT`, `TOMB_DATE_FMT`, `REUNIAO_STATUS_KEY`, `SDR_IN_LEADS`, `SDR_IN_REUNIOES`, `CLOSER_IN_REUNIOES`, `TIPO_IN_REUNIOES`, `TIPO_REUNIAO_TOTAL`
+- **UTILITIES** — `normalizeKey`, `COL_ALIASES`, `normalizeRow`, `parseDate`, `parseNum`, `parseTaxa`, `parsePLImplantado`, `tombValor`, `parsePatrimonio`, `monthKey/monthLabel`
+- **DATA LOADING** — `fetchSheet`, `loadData` (abas `Negociação` e `tombamentos` defensivas)
+- **DETECÇÃO** — `detectDateFormat` (DATE/VENDA/META/TOMB), `detectReuniaoStatus`, `detectSdrCloserColumns`
+- **FILTERING** — `passGlobal` (leads/reuniões), `passSdrCloser` (SDR/Closer/Tipo, defensivo), `passGlobalVendas`, `passGlobalNegociacao`, `emailsTipoRealizadas`, `filteredLeads/Reuniones/Vendas/Negociacao`, `filteredTombados` (funil), `filteredTombamentos` (aba Tombamento) + `TOMB_BREAKDOWNS`/`tombDimValue`
 - **MULTI-SELECT** — `MS_CFG`, `buildAllMS`, `populateAllFilters`
-- **RENDER DISPATCH** — `render()` → funil / leads / vendas / cohort / reunioes / forecast / pivot / ia
-- **FUNIL** — `renderFunil` (dispatcher Geral/Comparativo), `renderFunilGeral`, `renderFunilComparativo`
+- **METAS** — `metaPeriodo` (metas seguem o filtro ativo; sem filtro = mês atual), `calcMetaCaptacao` (segue `F.vdi/F.vdf`), `calcMetaLeads` (segue `F.di/F.df`)
+- **RENDER DISPATCH** — `render()` → funil / leads / vendas / tombamento / cohort / reunioes / forecast / pivot / ia
+- **FUNIL** — `renderFunil` (dispatcher Geral/Comparativo), `renderFunilGeral` (com etapa "Tombados" se a base existir), `renderFunilComparativo`
 - **DIÁRIA DE LEADS** — `PATRIMONIO_ORDER`, `orderLeadGroups`, `renderLeads/Table/Chart`
 - **DIÁRIA DE VENDAS** — `renderVendas` (dispatcher), `renderVendasCaptacao/Origem/Breakdown`, `renderVendasChart/BreakdownChart`, `VENDAS_BREAKDOWNS`
+- **TOMBAMENTO** — `renderTombamento` (dispatcher por `STATE.tombScope`), `renderTombamentoResumo/BreakdownTbl/Chart`, `computeTombAlertas`, `renderTombAlertas`, `applyTombDatePreset`
 - **REUNIÕES** — `renderReunioes` (eixo `data_da_atividade`; dedup por email+tipo)
 - **FORECAST** — `FORECAST_PRIOS`, `prioKey`, `renderForecast/computeAndRenderForecast/renderForecastEtapaChips`
-- **COHORT** — `renderCohort`
+- **COHORT** — `renderCohort` (dispatcher por `STATE.cohortView`), `renderCohortLeads` (clássica, intocada), `renderCohortTombamento` (3 tabelas), `fmtR$c`
 - **CHART HELPERS** — `buildDayAxis`, `buildTimeAxis` (dia/semana/mês), `chartOpts`, `destroyChart`
 - **TABELA DINÂMICA (pivot)** — `PIVOT_DIMS`, `PIVOT_DIM_SEL_KEY`, `PIVOT_SORT_VAL`, `buildPivotTree`, `orderPivotChildren`, `renderPivot/renderPivotArea/renderPivotRows`, `togglePivotDim`
 - **EVENT LISTENERS + INIT** — `bindEvents`, `init`, `refreshData`
@@ -69,12 +71,20 @@ Números de linha mudam a cada edição — **buscar pelo nome da função**. Or
 `normalizeRow()` aplica `normalizeKey()` (lowercase, sem acentos, underscores) em cada chave, depois mapeia para chaves canônicas via `COL_ALIASES`. Ao adicionar suporte a uma nova coluna da planilha, adicionar o alias no objeto `COL_ALIASES`.
 
 ### Detecção de formato de data
-Bases diferentes vêm em formatos diferentes (o Google Sheets exporta MDY em algumas, e as abas de Metas são preenchidas manualmente em DMY). Por isso há **três detectores independentes** (em `detectDateFormat`, heurística: dígito `>12` desambigua):
+Bases diferentes vêm em formatos diferentes (o Google Sheets exporta MDY em algumas, e as abas de Metas são preenchidas manualmente em DMY). Por isso há **quatro detectores independentes** (em `detectDateFormat`, heurística: dígito `>12` desambigua):
 - `DATE_FMT` — detectado de leads/reuniões (MDY nesta planilha)
 - `VENDA_DATE_FMT` — específico da coluna `data_venda`
 - `META_DATE_FMT` — específico da coluna `data` das abas de Metas (**DMY**; fallback DMY)
+- `TOMB_DATE_FMT` — específico de `data_de_implantacao` da aba tombamentos (**DMY** `dd/mm/yyyy`; fallback DMY)
 
-Sempre passar o formato certo no `parseDate`: `parseDate(row.data_venda, VENDA_DATE_FMT)` e `parseDate(m.data, META_DATE_FMT)`. ⚠️ Esquecer o `META_DATE_FMT` faz as metas caírem no mês errado (bug já corrigido — a linha de meta e a "meta até a data" dependem disso). `data_da_atividade` (Reuniões) vem em `YYYY-MM-DD HH:MM`, sem ambiguidade.
+Sempre passar o formato certo no `parseDate`: `parseDate(row.data_venda, VENDA_DATE_FMT)`, `parseDate(m.data, META_DATE_FMT)`, `parseDate(r.data_de_implantacao, TOMB_DATE_FMT)`. ⚠️ Esquecer o `META_DATE_FMT` faz as metas caírem no mês errado (bug já corrigido — a linha de meta e a "meta até a data" dependem disso). `data_da_atividade` (Reuniões) vem em `YYYY-MM-DD HH:MM`, sem ambiguidade. A coluna canônica `data_venda` vem de **"Consultoria - Data da contratação"** (alias em `COL_ALIASES`) e hoje chega em ISO `YYYY-MM-DD` — `parseDate` trata ISO direto.
+
+### Base tombamentos (regras críticas de parsing)
+- Colunas: `nome, email, taxa_de_adm, data_de_implantacao, pl_na_data_de_implantacao`. A coluna de PL foi **renomeada** na revisão de 2026-07 — `COL_ALIASES` mantém o nome antigo `pl_total_implantado_via_api` como chave canônica no código.
+- **PL** (`parsePLImplantado`): valor em **reais puros, sem separadores** (`"4989768"` = R$ 4.989.768) → `parseNum` direto. ⚠️ NUNCA reintroduzir a regra antiga de dividir por 1000 (valia só para o formato quebrado anterior à revisão). Sanidade: mediana ~R$ 600k, teto plausível ~R$ 20M por cliente.
+- **Taxa** (`parseTaxa`): vem como `"1,00%"` → fração (0,01). `parseNum` NÃO trata `%` — nunca usar nela. Máximo esperado: 1%.
+- **Valor = PL × taxa** (`tombValor`), calculado no dash — a coluna `valor` da planilha (fórmula quebrada) foi removida e nunca é lida.
+- **Regra global**: em todas as visões (funil, cohort, aba Tombamento escopo padrão), só entram tombamentos cujo **email aparece na aba Vendas** (match normalizado). A única exceção é o escopo "Todos os Tombamentos" da aba.
 
 ### Patrimônio validado
 Usar sempre `parsePatrimonio()`, nunca `parseNum()` direto:
@@ -108,15 +118,18 @@ A aba Vendas da planilha possui coluna `funil` diretamente — não fazer join p
 - **Closer**: filtra reuniões + vendas, **nunca leads** (regra de negócio — closer só atua da reunião em diante, mesmo que a coluna exista em leads). No Funil, ao filtrar closer os **Leads ficam cheios** e só marcadas/realizadas/vendas caem (intencional).
 - **Tipo de Reunião** (`tipo_reuniao` = coluna "Tipo de chamada e reunião", só em Reuniões): filtra reuniões direto; **vendas por cruzamento de e-mail** (`emailsTipoRealizadas`) — só vendas cujo e-mail bate com reunião REALIZADA do(s) tipo(s). "Todos" selecionado = sem restrição (`size < TIPO_REUNIAO_TOTAL`). E-mails montados de `RAW.reunioes` **sem dedup**.
 
-**Específicos de aba**: Diária de Vendas → range de data de **venda** (`F.vdi/F.vdf`); Forecast → **Etapa do negócio** (`STATE.forecastEtapa`, chips).
+**Específicos de aba**: Diária de Vendas → range de data de **venda** (`F.vdi/F.vdf`); Reuniões → data da **atividade** (`F.rai/F.raf`); Tombamento → data de **implantação** (`F.tdi/F.tdf`); Forecast → **Etapa do negócio** (`STATE.forecastEtapa`, chips).
+
+**Metas seguem o filtro ativo** (`metaPeriodo`): sem filtro de data = mês atual (comportamento original); com filtro, a meta soma o período filtrado — meta de leads segue `F.di/F.df` (criação), meta de captação segue `F.vdi/F.vdf` (venda).
 
 ## Abas / Views
 
-- **Funil**: sub-abas "Visão Geral" e "Comparativo por Período" (mês/semana por data de criação, tendência ▲/▼).
+- **Funil**: sub-abas "Visão Geral" e "Comparativo por Período" (mês/semana por data de criação, tendência ▲/▼). Se a base tombamentos existir, a Visão Geral ganha a 5ª etapa **"Tombados"** (= tombamentos cujo email casa com venda filtrada, dedup por email) com card, barra e KPI Vendas → Tombados.
 - **Diária de Leads**: metas + gráfico stacked; breakdown por Funil/Estratégia/Source/Fonte/Canal/**Patrimônio** (faixas em ordem monetária); toggle Diário/Mensal.
 - **Diária de Vendas**: sub-views Metas Captação / Origem (Suno claro, Base escuro) / breakdowns (Source/Funil/Estratégia/Fonte/Closer); toggle Diário/Mensal.
-- **Reuniões**: volume por `data_da_atividade`; toggle Dia/Semana/Mês; empilhamento por 7 parâmetros; dedup email+tipo.
-- **Cohort (Safra)**: conversão por mês de criação.
+- **Tombamento**: seletor de base (`STATE.tombScope`) — **Base Vendas** (padrão: match com as vendas FILTRADAS → a barra de filtros global vale na aba), **Todos os Tombamentos** (única visão com a base completa; ignora filtros globais; sem match, a dimensão vira "(Sem venda)") e **⚠ Alertas** (qualidade da base completa: clientes fora de Vendas com PL, linhas sem email, PL em branco/zerado, PL sem data, taxa >1,5%, + linha de união sem dupla contagem; esconde gráfico/estratificação). Estratificações como na Diária de Vendas (Resumo/Origem/Source/Funil/Estratégia/Fonte/Closer) com **dimensões herdadas da venda casada por email** (primeira venda); gráfico por `data_de_implantacao` com toggles PL ↔ Valor (PL × Taxa) e Diário/Mensal.
+- **Reuniões**: volume por `data_da_atividade`; toggle Dia/Semana/Mês; empilhamento por 7 parâmetros; dedup email+tipo; seletor global de modo de contagem (Negócio/Contato/Email+Tipo, `STATE.reuniaoCountMode`).
+- **Cohort (Safra)**: toggle `STATE.cohortView` — **Leads → Vendas** (clássica, conversão por mês de criação; código intocado em `renderCohortLeads`) e **Vendas → Tombamento** (`renderCohortTombamento`, 3 tabelas: **Quantidade** — safra = mês da 1ª venda do email, dedup por email, %M0/M+1/M+2; **Valor (PL × Taxa)**; **PL Validado → Implantado** — base = patrimônio validado das vendas do mês, % implantado. Match por email; implantação anterior ao mês da safra fica fora (anomalia); card-sub mostra reconciliação com o funil).
 - **Tabela Dinâmica (pivot)**: funil L→M→R→V por parâmetros hierárquicos (drilldown), data mês/semana/dia. Cabeçalho **ordenável por clique** (desc↔asc, `PIVOT_SORT_VAL`). Filtro global restringe a dimensão correspondente (`PIVOT_DIM_SEL_KEY`).
 - **Forecast**: projeção de `RAW.negociacao` — conta clientes e soma patrimônio por **Prioridade** (Alta/Média/Baixa) × **fatores editáveis** (`STATE.forecastFactors`, padrão 60/25/5%). Duas tabelas (qtd e patrimônio) + cards. Prioridade fora do padrão → "(Sem prioridade)" com fator 0.
 
